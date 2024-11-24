@@ -38,14 +38,33 @@ async function fetchWithRetry(
 ): Promise<Response> {
   try {
     const response = await fetch(url, options);
+    
     if (!response.ok) {
       const errorText = await response.text();
       console.error('API Error:', errorText);
-      throw new Error(`HTTP error! status: ${response.status}`);
+      
+      // Handle specific error cases
+      if (response.status === 401) {
+        throw new Error('Invalid API key. Please check your environment variables.');
+      }
+      if (response.status === 403) {
+        throw new Error('API access forbidden. Please check your API key permissions.');
+      }
+      if (response.status === 429) {
+        throw new Error('Rate limit exceeded. Please try again later.');
+      }
+      
+      throw new Error(`API request failed (${response.status}): ${errorText}`);
     }
+    
     return response;
   } catch (error) {
+    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+      throw new Error('Network error: Unable to connect to the API. Please check your internet connection.');
+    }
+    
     if (retries === 0) throw error;
+    
     await delay(backoff);
     return fetchWithRetry(url, options, retries - 1, backoff * 1.5);
   }
@@ -53,8 +72,13 @@ async function fetchWithRetry(
 
 function validateApiKey() {
   if (!API_KEY) {
-    throw new Error('API key not found. Please check your environment variables.');
+    throw new Error('API key not found. Please make sure VITE_PERPLEXITY_API_KEY is set in your environment variables.');
   }
+  
+  if (API_KEY === 'your_api_key_here') {
+    throw new Error('Please replace the default API key with your actual Perplexity API key.');
+  }
+  
   return true;
 }
 
@@ -72,6 +96,8 @@ export async function suggestRecipes(
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${API_KEY}`,
+          'Accept': 'application/json',
+          'Origin': window.location.origin
         },
         body: JSON.stringify({
           model,
@@ -88,14 +114,23 @@ export async function suggestRecipes(
     );
 
     const data = await response.json();
-    const content = data.choices[0].message.content;
     
+    if (!data.choices?.[0]?.message?.content) {
+      throw new Error('Invalid API response format. Missing required data.');
+    }
+    
+    const content = data.choices[0].message.content;
     const jsonMatch = content.match(/\[[\s\S]*\]/);
+    
     if (!jsonMatch) {
-      throw new Error('Invalid response format from API');
+      throw new Error('Invalid response format: Unable to parse recipe data.');
     }
     
     const recipesData = JSON.parse(jsonMatch[0]);
+    
+    if (!Array.isArray(recipesData) || recipesData.length === 0) {
+      throw new Error('No recipes found in the API response.');
+    }
     
     return recipesData.map((recipe: any) => ({
       ...recipe,
@@ -103,7 +138,8 @@ export async function suggestRecipes(
       favorite: false,
     }));
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to fetch recipes';
+    const message = error instanceof Error ? error.message : 'An unexpected error occurred';
+    console.error('Recipe suggestion error:', error);
     throw new Error(`Recipe suggestion failed: ${message}`);
   }
 }
@@ -122,6 +158,8 @@ export async function getCookingAdvice(
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${API_KEY}`,
+          'Accept': 'application/json',
+          'Origin': window.location.origin
         },
         body: JSON.stringify({
           model: 'llama-3.1-70b-instruct',
@@ -138,9 +176,15 @@ export async function getCookingAdvice(
     );
 
     const data = await response.json();
+    
+    if (!data.choices?.[0]?.message?.content) {
+      throw new Error('Invalid API response format. Missing required data.');
+    }
+    
     return data.choices[0].message.content;
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to get cooking advice';
+    const message = error instanceof Error ? error.message : 'An unexpected error occurred';
+    console.error('Cooking advice error:', error);
     throw new Error(`Cooking advice failed: ${message}`);
   }
 }
