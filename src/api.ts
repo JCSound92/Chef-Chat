@@ -44,8 +44,8 @@ async function delay(ms: number) {
 async function fetchWithRetry(
   url: string,
   options: RequestInit,
-  retries = 2,  // Reduced from 3 to 2
-  backoff = 500  // Reduced from 1000 to 500
+  retries = 3,
+  backoff = 1000
 ): Promise<Response> {
   try {
     const response = await fetch(url, options);
@@ -58,7 +58,7 @@ async function fetchWithRetry(
   } catch (error) {
     if (retries === 0) throw error;
     await delay(backoff);
-    return fetchWithRetry(url, options, retries - 1, backoff * 1.5);
+    return fetchWithRetry(url, options, retries - 1, backoff * 2);
   }
 }
 
@@ -66,6 +66,10 @@ export async function suggestRecipes(
   prompt: string,
   model = 'llama-3.1-70b-instruct'
 ): Promise<Recipe[]> {
+  if (!API_KEY) {
+    throw new Error('API key is missing');
+  }
+
   try {
     const response = await fetchWithRetry(
       `${BASE_URL}/chat/completions`,
@@ -90,14 +94,23 @@ export async function suggestRecipes(
     );
 
     const data = await response.json();
-    const content = data.choices[0].message.content;
     
+    if (!data.choices?.[0]?.message?.content) {
+      throw new Error('Invalid API response format');
+    }
+    
+    const content = data.choices[0].message.content;
     const jsonMatch = content.match(/\[[\s\S]*\]/);
+    
     if (!jsonMatch) {
-      throw new Error('No valid JSON found in response');
+      throw new Error('No valid recipe data found in response');
     }
     
     const recipesData = JSON.parse(jsonMatch[0]);
+    
+    if (!Array.isArray(recipesData) || recipesData.length === 0) {
+      throw new Error('No recipes found');
+    }
     
     return recipesData.map((recipe: any) => ({
       ...recipe,
@@ -106,11 +119,9 @@ export async function suggestRecipes(
     }));
   } catch (error) {
     console.error('API Error:', error);
-    throw new Error(
-      error instanceof Error 
-        ? `Failed to get recipes: ${error.message}`
-        : 'Failed to get recipes'
-    );
+    throw error instanceof Error 
+      ? error 
+      : new Error('Failed to get recipes');
   }
 }
 
@@ -118,6 +129,10 @@ export async function getCookingAdvice(
   question: string,
   recipe: Recipe
 ): Promise<string> {
+  if (!API_KEY) {
+    throw new Error('API key is missing');
+  }
+
   try {
     const response = await fetchWithRetry(
       `${BASE_URL}/chat/completions`,
@@ -142,9 +157,16 @@ export async function getCookingAdvice(
     );
 
     const data = await response.json();
+    
+    if (!data.choices?.[0]?.message?.content) {
+      throw new Error('Invalid API response format');
+    }
+    
     return data.choices[0].message.content;
   } catch (error) {
     console.error('API Error:', error);
-    throw new Error('Failed to get cooking advice');
+    throw error instanceof Error 
+      ? error 
+      : new Error('Failed to get cooking advice');
   }
 }
