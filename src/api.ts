@@ -47,26 +47,20 @@ async function fetchWithRetry(
   backoff = 500
 ): Promise<Response> {
   try {
-    // Add CORS mode and credentials
     const fetchOptions: RequestInit = {
       ...options,
-      mode: 'cors',
-      credentials: 'omit',
       headers: {
         ...options.headers,
-        'Accept': 'application/json',
-        'Access-Control-Allow-Origin': '*'
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${API_KEY}`
       }
     };
 
-    // Log the request details in production for debugging
     if (import.meta.env.MODE === 'production') {
-      console.log('API Request:', {
+      console.log('Making API request:', {
         url,
-        hasAuthHeader: !!fetchOptions.headers?.['Authorization'],
         method: fetchOptions.method,
-        mode: fetchOptions.mode,
-        headers: Object.keys(fetchOptions.headers || {})
+        hasAuth: !!fetchOptions.headers?.['Authorization']
       });
     }
 
@@ -74,15 +68,13 @@ async function fetchWithRetry(
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('API Error:', {
+      console.error('API Error Response:', {
         status: response.status,
         statusText: response.statusText,
         error: errorText,
-        hasApiKey: !!API_KEY,
-        responseHeaders: Object.fromEntries(response.headers.entries())
+        headers: Object.fromEntries(response.headers.entries())
       });
       
-      // Handle specific error cases
       if (response.status === 401) {
         throw new Error('Invalid API key. Please check your environment variables.');
       }
@@ -98,15 +90,8 @@ async function fetchWithRetry(
     
     return response;
   } catch (error) {
-    console.error('Fetch Error Details:', {
-      error: error instanceof Error ? error.message : 'Unknown error',
-      hasApiKey: !!API_KEY,
-      mode: import.meta.env.MODE,
-      url: BASE_URL
-    });
-
     if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-      throw new Error('Unable to connect to the API. This might be due to CORS restrictions or network issues. Please try again.');
+      throw new Error('Network error: Unable to connect to the API. Please check your internet connection.');
     }
     
     if (retries === 0) throw error;
@@ -118,18 +103,8 @@ async function fetchWithRetry(
 
 function validateApiKey() {
   if (!API_KEY) {
-    console.error('API Key Validation Failed:', {
-      hasKey: false,
-      mode: import.meta.env.MODE,
-      envVars: Object.keys(import.meta.env).filter(key => key.startsWith('VITE_'))
-    });
-    throw new Error('API key not found. Please check your environment variables in Netlify.');
+    throw new Error('API key not found. Please check your environment variables.');
   }
-  
-  if (API_KEY === 'your_api_key_here') {
-    throw new Error('Please replace the default API key with your actual Perplexity API key.');
-  }
-  
   return true;
 }
 
@@ -144,10 +119,6 @@ export async function suggestRecipes(
       `${BASE_URL}/chat/completions`,
       {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${API_KEY}`
-        },
         body: JSON.stringify({
           model,
           messages: [
@@ -158,29 +129,27 @@ export async function suggestRecipes(
           max_tokens: 2000,
           presence_penalty: -0.1,
           frequency_penalty: 0.1,
-        }),
+        })
       }
     );
 
     const data = await response.json();
     
     if (!data.choices?.[0]?.message?.content) {
-      console.error('Invalid API Response:', data);
-      throw new Error('Invalid API response format. Missing required data.');
+      throw new Error('Invalid API response format');
     }
     
     const content = data.choices[0].message.content;
     const jsonMatch = content.match(/\[[\s\S]*\]/);
     
     if (!jsonMatch) {
-      console.error('Invalid Response Content:', content);
-      throw new Error('Invalid response format: Unable to parse recipe data.');
+      throw new Error('Invalid response format: Unable to parse recipe data');
     }
     
     const recipesData = JSON.parse(jsonMatch[0]);
     
     if (!Array.isArray(recipesData) || recipesData.length === 0) {
-      throw new Error('No recipes found in the API response.');
+      throw new Error('No recipes found in the API response');
     }
     
     return recipesData.map((recipe: any) => ({
@@ -189,14 +158,8 @@ export async function suggestRecipes(
       favorite: false,
     }));
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'An unexpected error occurred';
-    console.error('Recipe suggestion error:', {
-      error: message,
-      hasApiKey: !!API_KEY,
-      mode: import.meta.env.MODE,
-      url: BASE_URL
-    });
-    throw new Error(`Recipe suggestion failed: ${message}`);
+    console.error('Recipe suggestion error:', error);
+    throw new Error(`Recipe suggestion failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
@@ -211,10 +174,6 @@ export async function getCookingAdvice(
       `${BASE_URL}/chat/completions`,
       {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${API_KEY}`
-        },
         body: JSON.stringify({
           model: 'llama-3.1-70b-instruct',
           messages: [
@@ -225,26 +184,19 @@ export async function getCookingAdvice(
           max_tokens: 200,
           presence_penalty: -0.1,
           frequency_penalty: 0.1,
-        }),
+        })
       }
     );
 
     const data = await response.json();
     
     if (!data.choices?.[0]?.message?.content) {
-      console.error('Invalid API Response:', data);
-      throw new Error('Invalid API response format. Missing required data.');
+      throw new Error('Invalid API response format');
     }
     
     return data.choices[0].message.content;
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'An unexpected error occurred';
-    console.error('Cooking advice error:', {
-      error: message,
-      hasApiKey: !!API_KEY,
-      mode: import.meta.env.MODE,
-      url: BASE_URL
-    });
-    throw new Error(`Cooking advice failed: ${message}`);
+    console.error('Cooking advice error:', error);
+    throw new Error(`Cooking advice failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
