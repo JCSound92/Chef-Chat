@@ -1,14 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Search, Loader2, Send } from 'lucide-react';
 import { useStore } from '../store';
 import { suggestRecipes, getCookingAdvice } from '../api';
 import toast from 'react-hot-toast';
-import { motion, AnimatePresence } from 'framer-motion';
 
 export function ChatControl() {
   const [input, setInput] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
   
@@ -22,11 +20,9 @@ export function ChatControl() {
     adjustPortions,
     adjustMealPortions,
     isLoading,
-    recipes,
     filterRecipes,
     chatMode,
-    addChatMessage,
-    clearSearch
+    addChatMessage
   } = useStore();
 
   const isSearchView = location.pathname === '/recent' || location.pathname === '/saved';
@@ -47,7 +43,7 @@ export function ChatControl() {
       return "Search your saved recipes...";
     }
 
-    if (isCooking) {
+    if (isCooking || location.pathname === '/cooking') {
       return "Ask about timing, temperature, and techniques...";
     }
 
@@ -71,12 +67,6 @@ export function ChatControl() {
         return "How can I help with your cooking?";
     }
   };
-
-  useEffect(() => {
-    if (isSearchView) {
-      filterRecipes(input);
-    }
-  }, [input, isSearchView, filterRecipes]);
 
   const handleServingAdjustment = (command: string) => {
     const servingMatch = command.match(/(?:adjust|make|scale).*?(\d+)\s*(?:people|servings)/i);
@@ -108,11 +98,12 @@ export function ChatControl() {
     setInput('');
 
     if (isSearchView) {
+      filterRecipes(query);
       return;
     }
 
     // Add user message first for better UX
-    if (chatMode || isCooking) {
+    if (chatMode || isCooking || location.pathname === '/cooking') {
       addChatMessage(query, 'user');
     }
 
@@ -123,16 +114,28 @@ export function ChatControl() {
 
     try {
       setIsLoading(true);
-      setIsTyping(true);
 
-      if (chatMode || isCooking) {
+      // Handle cooking mode chat
+      if (isCooking || location.pathname === '/cooking') {
+        const activeRecipe = currentMeal.recipes[0]; // Get the current recipe being cooked
+        const response = await getCookingAdvice(query, activeRecipe);
+        if (response) {
+          addChatMessage(response, 'chef');
+        } else {
+          throw new Error('No response received');
+        }
+      }
+      // Handle regular chat mode
+      else if (chatMode) {
         const response = await getCookingAdvice(query, currentRecipe || currentMeal.recipes[0] || { title: '' });
         if (response) {
           addChatMessage(response, 'chef');
         } else {
           throw new Error('No response received');
         }
-      } else {
+      }
+      // Handle recipe suggestions
+      else {
         const recipes = await suggestRecipes(query, currentMeal.recipes);
         if (recipes && recipes.length > 0) {
           setSuggestions(recipes, query);
@@ -148,7 +151,6 @@ export function ChatControl() {
       addChatMessage("Ope! Sorry about that. Could you try asking in a different way?", 'chef');
     } finally {
       setIsLoading(false);
-      setIsTyping(false);
     }
   };
 

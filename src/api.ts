@@ -35,7 +35,16 @@ When suggesting multiple recipes, respond with a JSON array of recipes in this f
 
 const COOKING_PROMPT = `You are a friendly Midwest cooking assistant named Oh Sure Chef. 
 Keep responses brief and helpful, occasionally using phrases like "oh sure", "you betcha", or "ope" naturally.
-Focus on practical cooking advice and tips.`;
+Focus on practical cooking advice and tips.
+You can help with:
+- Ingredient substitutions
+- Temperature conversions
+- Timing questions
+- Technique explanations
+- Troubleshooting cooking issues
+- Kitchen measurement conversions
+- Food safety guidelines
+- Equipment recommendations`;
 
 async function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -48,12 +57,16 @@ async function fetchWithRetry(
   backoff = 500
 ): Promise<Response> {
   try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${API_KEY}`
+    };
+
     const fetchOptions: RequestInit = {
       ...options,
       headers: {
         ...options.headers,
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${API_KEY}`
+        ...headers
       }
     };
 
@@ -61,7 +74,7 @@ async function fetchWithRetry(
       console.log('Making API request:', {
         url,
         method: fetchOptions.method,
-        hasAuth: !!fetchOptions.headers?.['Authorization']
+        hasAuth: !!headers.Authorization
       });
     }
 
