@@ -3,17 +3,6 @@ import { persist } from 'zustand/middleware';
 import { AppState, Recipe, ShoppingListItem } from './types';
 import { parseIngredient, formatIngredient, consolidateIngredients } from './utils/ingredientParser';
 
-function scaleIngredients(ingredients: string[], ratio: number): string[] {
-  return ingredients.map(ingredient => {
-    const parsed = parseIngredient(ingredient);
-    if (parsed) {
-      parsed.amount *= ratio;
-      return formatIngredient(parsed);
-    }
-    return ingredient;
-  });
-}
-
 export const useStore = create<AppState>()(
   persist(
     (set, get) => ({
@@ -134,34 +123,57 @@ export const useStore = create<AppState>()(
         }),
 
       toggleFavorite: (recipeId) =>
-        set((state) => ({
-          recipes: state.recipes.map((recipe) =>
-            recipe.id === recipeId 
-              ? { ...recipe, favorite: !recipe.favorite } 
-              : recipe
-          ),
-          currentRecipe: state.currentRecipe?.id === recipeId
-            ? { ...state.currentRecipe, favorite: !state.currentRecipe.favorite }
-            : state.currentRecipe,
-          suggestions: state.suggestions.map((recipe) =>
-            recipe.id === recipeId
-              ? { ...recipe, favorite: !recipe.favorite }
-              : recipe
-          ),
-          filteredRecipes: state.filteredRecipes.filter(recipe => 
-            recipe.id !== recipeId || !recipe.favorite
-          )
-        })),
+        set((state) => {
+          const recipe = state.recipes.find(r => r.id === recipeId) ||
+                        state.suggestions.find(r => r.id === recipeId) ||
+                        state.filteredRecipes.find(r => r.id === recipeId) ||
+                        state.currentRecipe?.id === recipeId ? state.currentRecipe : null;
+
+          if (!recipe) return state;
+
+          const updatedRecipe = {
+            ...recipe,
+            favorite: !recipe.favorite
+          };
+
+          return {
+            recipes: state.recipes.map((r) =>
+              r.id === recipeId ? updatedRecipe : r
+            ),
+            currentRecipe: state.currentRecipe?.id === recipeId
+              ? updatedRecipe
+              : state.currentRecipe,
+            suggestions: state.suggestions.map((r) =>
+              r.id === recipeId ? updatedRecipe : r
+            ),
+            filteredRecipes: state.filteredRecipes.map((r) =>
+              r.id === recipeId ? updatedRecipe : r
+            ),
+            currentMeal: {
+              ...state.currentMeal,
+              recipes: state.currentMeal.recipes.map((r) =>
+                r.id === recipeId ? updatedRecipe : r
+              ),
+              originalRecipes: state.currentMeal.originalRecipes?.map((r) =>
+                r.id === recipeId ? updatedRecipe : r
+              ) || []
+            }
+          };
+        }),
 
       adjustPortions: (servings) =>
         set((state) => {
           if (!state.currentRecipe?.originalIngredients) return state;
 
           const ratio = servings / (state.currentRecipe.currentServings || 4);
-          const updatedIngredients = scaleIngredients(
-            state.currentRecipe.originalIngredients,
-            ratio
-          );
+          const updatedIngredients = state.currentRecipe.originalIngredients.map(ingredient => {
+            const parsed = parseIngredient(ingredient);
+            if (parsed) {
+              parsed.amount *= ratio;
+              return formatIngredient(parsed);
+            }
+            return ingredient;
+          });
 
           const updatedRecipe = {
             ...state.currentRecipe,
@@ -191,10 +203,14 @@ export const useStore = create<AppState>()(
           const updatedRecipes = originalRecipes.map(recipe => ({
             ...recipe,
             currentServings: servings,
-            ingredients: scaleIngredients(
-              recipe.originalIngredients || [...recipe.ingredients],
-              ratio
-            )
+            ingredients: recipe.originalIngredients?.map(ingredient => {
+              const parsed = parseIngredient(ingredient);
+              if (parsed) {
+                parsed.amount *= ratio;
+                return formatIngredient(parsed);
+              }
+              return ingredient;
+            }) || recipe.ingredients
           }));
 
           return {
@@ -275,18 +291,11 @@ export const useStore = create<AppState>()(
 
       addToShoppingList: (items: string[], recipeId: string | null = null) =>
         set((state) => {
-          const existingItems = state.shoppingList.map(item => item.name);
-          const newItems = consolidateIngredients([...existingItems, ...items]);
-          
-          // Remove existing items
-          const updatedList = state.shoppingList.filter(item => 
-            !items.some(newItem => item.name.toLowerCase().includes(newItem.toLowerCase()))
-          );
-          
+          const consolidatedItems = consolidateIngredients(items);
           return {
             shoppingList: [
-              ...updatedList,
-              ...newItems.map((item) => ({
+              ...state.shoppingList,
+              ...consolidatedItems.map((item) => ({
                 id: `${Date.now()}-${Math.random()}`,
                 name: item,
                 recipeId,
@@ -316,10 +325,10 @@ export const useStore = create<AppState>()(
       clearShoppingList: () =>
         set({ shoppingList: [] }),
 
-      startTimer: (minutes: number) =>
+      startTimer: (seconds: number) =>
         set({
           isTimerActive: true,
-          timerSeconds: minutes * 60,
+          timerSeconds: seconds,
         }),
 
       stopTimer: () =>

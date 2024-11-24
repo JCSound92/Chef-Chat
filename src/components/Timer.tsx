@@ -1,21 +1,35 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Timer as TimerIcon, X } from 'lucide-react';
 import { useStore } from '../store';
 
-const TIMER_SOUND_URL = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3';
+// Kitchen timer sound (looping marimba style)
+const TIMER_SOUND_URL = 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3';
 
 export function Timer() {
   const { isTimerActive, timerSeconds, stopTimer, decrementTimer } = useStore();
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const intervalRef = useRef<number | null>(null);
+  const isPlayingRef = useRef(false);
 
   useEffect(() => {
     if (!isTimerActive) return;
 
-    const interval = setInterval(() => {
+    // Create audio element if it doesn't exist
+    if (!audioRef.current) {
+      audioRef.current = new Audio(TIMER_SOUND_URL);
+      audioRef.current.loop = true;
+    }
+
+    intervalRef.current = window.setInterval(() => {
       if (timerSeconds <= 0) {
+        // Stop the timer countdown
         stopTimer();
-        // Play notification sound
-        const audio = new Audio(TIMER_SOUND_URL);
-        audio.play().catch(console.error);
+
+        // Play looping sound
+        if (audioRef.current && !isPlayingRef.current) {
+          audioRef.current.play().catch(console.error);
+          isPlayingRef.current = true;
+        }
 
         // Show system notification if supported
         if ('Notification' in window && Notification.permission === 'granted') {
@@ -29,7 +43,11 @@ export function Timer() {
       }
     }, 1000);
 
-    return () => clearInterval(interval);
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
   }, [isTimerActive, timerSeconds, stopTimer, decrementTimer]);
 
   // Request notification permission on component mount
@@ -39,7 +57,27 @@ export function Timer() {
     }
   }, []);
 
-  if (!isTimerActive) return null;
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+        isPlayingRef.current = false;
+      }
+    };
+  }, []);
+
+  const handleStop = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      isPlayingRef.current = false;
+    }
+    stopTimer();
+  };
+
+  if (!isTimerActive && !isPlayingRef.current) return null;
 
   const minutes = Math.floor(timerSeconds / 60);
   const seconds = timerSeconds % 60;
@@ -52,7 +90,7 @@ export function Timer() {
           {minutes}:{seconds.toString().padStart(2, '0')}
         </span>
         <button
-          onClick={stopTimer}
+          onClick={handleStop}
           className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
         >
           <X className="w-4 h-4" />

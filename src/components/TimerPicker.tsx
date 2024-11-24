@@ -19,9 +19,8 @@ function ScrollPicker({ values, value, onChange, label }: ScrollPickerProps) {
   useEffect(() => {
     if (containerRef.current) {
       const index = values.indexOf(value);
-      const newScrollTop = index * itemHeight - (itemHeight * 2);
-      containerRef.current.scrollTop = newScrollTop;
-      setScrollTop(newScrollTop);
+      containerRef.current.scrollTop = index * itemHeight;
+      setScrollTop(index * itemHeight);
     }
   }, [value, values]);
 
@@ -39,7 +38,7 @@ function ScrollPicker({ values, value, onChange, label }: ScrollPickerProps) {
     containerRef.current.scrollTop = newScrollTop;
     
     const index = Math.round(newScrollTop / itemHeight);
-    const newValue = values[index + 2];
+    const newValue = values[index];
     if (newValue !== undefined && newValue !== value) {
       onChange(newValue);
     }
@@ -56,7 +55,7 @@ function ScrollPicker({ values, value, onChange, label }: ScrollPickerProps) {
     if (!isDragging) {
       const newScrollTop = e.currentTarget.scrollTop;
       const index = Math.round(newScrollTop / itemHeight);
-      const newValue = values[index + 2];
+      const newValue = values[index];
       if (newValue !== undefined && newValue !== value) {
         onChange(newValue);
       }
@@ -72,7 +71,7 @@ function ScrollPicker({ values, value, onChange, label }: ScrollPickerProps) {
     containerRef.current.scrollTop = newScrollTop;
     
     const index = Math.round(newScrollTop / itemHeight);
-    const newValue = values[index + 2];
+    const newValue = values[index];
     if (newValue !== undefined && newValue !== value) {
       onChange(newValue);
     }
@@ -98,7 +97,6 @@ function ScrollPicker({ values, value, onChange, label }: ScrollPickerProps) {
     <div className="flex flex-col items-center">
       <div className="text-xs text-gray-500 mb-1">{label}</div>
       <div className="relative">
-        {/* Desktop Controls */}
         <div className="absolute -left-8 top-1/2 -translate-y-1/2 flex flex-col gap-2 md:flex hidden">
           <button
             onClick={increment}
@@ -153,10 +151,10 @@ interface TimerPickerProps {
 
 export function TimerPicker({ onClose, onStart }: TimerPickerProps) {
   const [hours, setHours] = useState(0);
-  const [minutes, setMinutes] = useState(5);
+  const [minutes, setMinutes] = useState(0);
   const [seconds, setSeconds] = useState(0);
 
-  const hourValues = Array.from({ length: 6 }, (_, i) => i); // Changed from 4 to 6 to allow 0-5 hours
+  const hourValues = Array.from({ length: 6 }, (_, i) => i);
   const minuteValues = Array.from({ length: 60 }, (_, i) => i);
   const secondValues = Array.from({ length: 60 }, (_, i) => i);
 
@@ -165,8 +163,6 @@ export function TimerPicker({ onClose, onStart }: TimerPickerProps) {
     if (totalSeconds > 0) {
       onStart(totalSeconds);
       onClose();
-    } else {
-      alert('Please set a time greater than 0');
     }
   };
 
@@ -218,7 +214,8 @@ export function TimerPicker({ onClose, onStart }: TimerPickerProps) {
 
         <button
           onClick={handleStart}
-          className="w-full py-3 bg-[#FF6B6B] text-white rounded-xl font-medium hover:bg-[#FF5252] transition-colors"
+          disabled={hours === 0 && minutes === 0 && seconds === 0}
+          className="w-full py-3 bg-[#FF6B6B] text-white rounded-xl font-medium hover:bg-[#FF5252] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Start Timer
         </button>
