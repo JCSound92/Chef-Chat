@@ -133,7 +133,7 @@ export function ChatControl() {
           throw new Error('No response received');
         }
       } else {
-        const recipes = await suggestRecipes(query);
+        const recipes = await suggestRecipes(query, currentMeal.recipes);
         if (recipes && recipes.length > 0) {
           setSuggestions(recipes, query);
           setCurrentRecipe(null);

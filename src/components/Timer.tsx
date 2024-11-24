@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Timer as TimerIcon, X } from 'lucide-react';
 import { useStore } from '../store';
 
-// Rooster sound (looping)
+// Rooster sound
 const TIMER_SOUND_URL = 'https://assets.mixkit.co/active_storage/sfx/933/933-preview.mp3';
 
 export function Timer() {

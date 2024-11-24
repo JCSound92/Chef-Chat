@@ -29,7 +29,8 @@ When suggesting multiple recipes, respond with a JSON array of recipes in this f
   ],
   "time": estimatedMinutes,
   "difficulty": "easy|medium|hard",
-  "cuisine": "cuisine type"
+  "cuisine": "cuisine type",
+  "type": "main|appetizer|side|dessert|drink"
 }]`;
 
 const COOKING_PROMPT = `You are a friendly Midwest cooking assistant named Oh Sure Chef. 
@@ -110,10 +111,19 @@ function validateApiKey() {
 
 export async function suggestRecipes(
   prompt: string,
+  currentMeal?: Recipe[],
   model = 'llama-3.1-70b-instruct'
 ): Promise<Recipe[]> {
   try {
     validateApiKey();
+
+    let enhancedPrompt = prompt;
+    if (currentMeal && currentMeal.length > 0) {
+      const mealContext = currentMeal.map(recipe => 
+        `${recipe.title} (${recipe.type || 'main course'})`
+      ).join(', ');
+      enhancedPrompt = `Current meal includes: ${mealContext}. ${prompt}`;
+    }
 
     const response = await fetchWithRetry(
       `${BASE_URL}/chat/completions`,
@@ -123,7 +133,7 @@ export async function suggestRecipes(
           model,
           messages: [
             { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: `Suggest 3 recipes for: ${prompt}` },
+            { role: 'user', content: `Suggest 3 recipes for: ${enhancedPrompt}` },
           ],
           temperature: 0.6,
           max_tokens: 2000,
