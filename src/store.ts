@@ -1,29 +1,14 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { AppState, Recipe, ShoppingListItem } from './types';
-
-function parseIngredient(ingredient: string) {
-  const match = ingredient.match(/^(\d*\.?\d+)\s*(.*)/);
-  if (match) {
-    return {
-      amount: parseFloat(match[1]),
-      unit: match[2].trim()
-    };
-  }
-  return null;
-}
-
-function formatIngredient(amount: number, unit: string) {
-  const roundedAmount = Math.round(amount * 10) / 10;
-  const formattedAmount = roundedAmount % 1 === 0 ? roundedAmount.toString() : roundedAmount.toFixed(1);
-  return `${formattedAmount} ${unit}`;
-}
+import { consolidateIngredients } from './utils/ingredientParser';
 
 function scaleIngredients(ingredients: string[], ratio: number): string[] {
   return ingredients.map(ingredient => {
     const parsed = parseIngredient(ingredient);
     if (parsed) {
-      return formatIngredient(parsed.amount * ratio, parsed.unit);
+      parsed.amount *= ratio;
+      return formatIngredient(parsed);
     }
     return ingredient;
   });
@@ -268,7 +253,9 @@ export const useStore = create<AppState>()(
 
       generateShoppingList: () =>
         set((state) => {
-          const ingredients = state.currentMeal.recipes.flatMap(recipe => recipe.ingredients);
+          const allIngredients = state.currentMeal.recipes.flatMap(recipe => recipe.ingredients);
+          const consolidatedIngredients = consolidateIngredients(allIngredients);
+          
           return {
             currentMeal: {
               ...state.currentMeal,
@@ -276,7 +263,7 @@ export const useStore = create<AppState>()(
             },
             shoppingList: [
               ...state.shoppingList,
-              ...ingredients.map((item) => ({
+              ...consolidatedIngredients.map((item) => ({
                 id: `${Date.now()}-${Math.random()}`,
                 name: item,
                 recipeId: null,
@@ -287,17 +274,27 @@ export const useStore = create<AppState>()(
         }),
 
       addToShoppingList: (items: string[], recipeId: string | null = null) =>
-        set((state) => ({
-          shoppingList: [
-            ...state.shoppingList,
-            ...items.map((item) => ({
-              id: `${Date.now()}-${Math.random()}`,
-              name: item,
-              recipeId,
-              completed: false,
-            })),
-          ],
-        })),
+        set((state) => {
+          const existingItems = state.shoppingList.map(item => item.name);
+          const newItems = consolidateIngredients([...existingItems, ...items]);
+          
+          // Remove existing items
+          const updatedList = state.shoppingList.filter(item => 
+            !items.some(newItem => item.name.toLowerCase().includes(newItem.toLowerCase()))
+          );
+          
+          return {
+            shoppingList: [
+              ...updatedList,
+              ...newItems.map((item) => ({
+                id: `${Date.now()}-${Math.random()}`,
+                name: item,
+                recipeId,
+                completed: false,
+              })),
+            ],
+          };
+        }),
 
       removeFromShoppingList: (id: string) =>
         set((state) => ({
