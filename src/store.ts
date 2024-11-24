@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { AppState, Recipe, ShoppingListItem } from './types';
-import { consolidateIngredients } from './utils/ingredientParser';
+import { parseIngredient, formatIngredient, consolidateIngredients } from './utils/ingredientParser';
 
 function scaleIngredients(ingredients: string[], ratio: number): string[] {
   return ingredients.map(ingredient => {
@@ -86,7 +86,7 @@ export const useStore = create<AppState>()(
           }
         })),
 
-      completeOnboardingStep: (step: keyof typeof state.onboarding.steps) =>
+      completeOnboardingStep: (step: keyof AppState['onboarding']['steps']) =>
         set((state) => ({
           onboarding: {
             ...state.onboarding,
