@@ -20,18 +20,7 @@ When suggesting multiple recipes, respond with a JSON array of recipes in this f
   "time": estimatedMinutes,
   "difficulty": "easy|medium|hard",
   "cuisine": "cuisine type"
-}]
-
-Guidelines for steps:
-- Break down complex processes into multiple smaller steps
-- Include specific measurements, temperatures, and times
-- Describe visual cues and texture changes
-- Explain techniques in detail (e.g., "dice the onion into 1/4-inch pieces" instead of just "dice onion")
-- Include safety tips and common mistakes to avoid
-- Add helpful tips about ingredient substitutions or variations
-- Describe what each step should look like when completed correctly
-- Keep each step focused on a single task
-- Use clear, specific language avoiding vague terms`;
+}]`;
 
 const COOKING_PROMPT = `You are a friendly Midwest cooking assistant named Oh Sure Chef. 
 Keep responses brief and helpful, occasionally using phrases like "oh sure", "you betcha", or "ope" naturally.
@@ -44,8 +33,8 @@ async function delay(ms: number) {
 async function fetchWithRetry(
   url: string,
   options: RequestInit,
-  retries = 2,  // Reduced from 3 to 2
-  backoff = 500  // Reduced from 1000 to 500
+  retries = 2,
+  backoff = 500
 ): Promise<Response> {
   try {
     const response = await fetch(url, options);
@@ -62,11 +51,19 @@ async function fetchWithRetry(
   }
 }
 
+function validateApiKey() {
+  if (!API_KEY) {
+    throw new Error('Please add your API key to continue');
+  }
+}
+
 export async function suggestRecipes(
   prompt: string,
   model = 'llama-3.1-70b-instruct'
 ): Promise<Recipe[]> {
   try {
+    validateApiKey();
+
     const response = await fetchWithRetry(
       `${BASE_URL}/chat/completions`,
       {
@@ -106,11 +103,10 @@ export async function suggestRecipes(
     }));
   } catch (error) {
     console.error('API Error:', error);
-    throw new Error(
-      error instanceof Error 
-        ? `Failed to get recipes: ${error.message}`
-        : 'Failed to get recipes'
-    );
+    if (error instanceof Error && error.message.includes('API key')) {
+      throw error;
+    }
+    throw new Error('Failed to fetch recipes');
   }
 }
 
@@ -119,6 +115,8 @@ export async function getCookingAdvice(
   recipe: Recipe
 ): Promise<string> {
   try {
+    validateApiKey();
+
     const response = await fetchWithRetry(
       `${BASE_URL}/chat/completions`,
       {
@@ -145,6 +143,9 @@ export async function getCookingAdvice(
     return data.choices[0].message.content;
   } catch (error) {
     console.error('API Error:', error);
+    if (error instanceof Error && error.message.includes('API key')) {
+      throw error;
+    }
     throw new Error('Failed to get cooking advice');
   }
 }

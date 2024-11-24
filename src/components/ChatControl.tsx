@@ -19,7 +19,6 @@ export function ChatControl() {
     currentMeal,
     isCooking,
     setCurrentRecipe,
-    addToShoppingList,
     adjustPortions,
     adjustMealPortions,
     isLoading,
@@ -79,52 +78,6 @@ export function ChatControl() {
     }
   }, [input, isSearchView, filterRecipes]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim()) return;
-
-    if (isSearchView) {
-      return;
-    }
-
-    const query = input.trim().toLowerCase();
-    setInput('');
-
-    if (chatMode || isCooking) {
-      addChatMessage(query, 'user');
-    }
-
-    if (chatMode || isCooking) {
-      try {
-        setIsTyping(true);
-        const response = await getCookingAdvice(query, currentRecipe || { title: '' });
-        addChatMessage(response, 'chef');
-      } catch (error) {
-        toast.error('Failed to get cooking advice. Please try again.');
-      } finally {
-        setIsTyping(false);
-      }
-      return;
-    }
-
-    if (handleServingAdjustment(query)) {
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      setIsTyping(true);
-      const recipes = await suggestRecipes(query);
-      setSuggestions(recipes, query);
-      setCurrentRecipe(null);
-    } catch (error) {
-      toast.error('Failed to find recipes. Please try again.');
-    } finally {
-      setIsLoading(false);
-      setIsTyping(false);
-    }
-  };
-
   const handleServingAdjustment = (command: string) => {
     const servingMatch = command.match(/(?:adjust|make|scale).*?(\d+)\s*(?:people|servings)/i);
     if (servingMatch) {
@@ -147,6 +100,58 @@ export function ChatControl() {
     return false;
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim()) return;
+
+    const query = input.trim().toLowerCase();
+    setInput('');
+
+    if (isSearchView) {
+      return;
+    }
+
+    // Add user message first for better UX
+    if (chatMode || isCooking) {
+      addChatMessage(query, 'user');
+    }
+
+    // Handle serving adjustments
+    if (handleServingAdjustment(query)) {
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setIsTyping(true);
+
+      if (chatMode || isCooking) {
+        const response = await getCookingAdvice(query, currentRecipe || currentMeal.recipes[0] || { title: '' });
+        if (response) {
+          addChatMessage(response, 'chef');
+        } else {
+          throw new Error('No response received');
+        }
+      } else {
+        const recipes = await suggestRecipes(query);
+        if (recipes && recipes.length > 0) {
+          setSuggestions(recipes, query);
+          setCurrentRecipe(null);
+        } else {
+          throw new Error('No recipes found');
+        }
+      }
+    } catch (error) {
+      console.error('API Error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Something went wrong';
+      toast.error(errorMessage);
+      addChatMessage("Ope! Sorry about that. Could you try asking in a different way?", 'chef');
+    } finally {
+      setIsLoading(false);
+      setIsTyping(false);
+    }
+  };
+
   return (
     <>
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 shadow-lg">
@@ -164,11 +169,12 @@ export function ChatControl() {
               onChange={(e) => setInput(e.target.value)}
               placeholder={getPlaceholder()}
               className="flex-1 pl-4 pr-12 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#e05f3e] focus:border-transparent"
+              disabled={isLoading}
             />
             <button
               type="submit"
               className="absolute right-3 p-2 text-gray-400 hover:text-[#e05f3e] transition-colors"
-              disabled={!input.trim()}
+              disabled={!input.trim() || isLoading}
             >
               <Send className="w-5 h-5" />
             </button>
