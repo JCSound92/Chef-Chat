@@ -127,8 +127,7 @@ export async function suggestRecipes(
           ],
           temperature: 0.6,
           max_tokens: 2000,
-          presence_penalty: -0.1,
-          frequency_penalty: 0.1,
+          presence_penalty: -0.1
         })
       }
     );
@@ -182,8 +181,7 @@ export async function getCookingAdvice(
           ],
           temperature: 0.6,
           max_tokens: 200,
-          presence_penalty: -0.1,
-          frequency_penalty: 0.1,
+          presence_penalty: -0.1
         })
       }
     );
