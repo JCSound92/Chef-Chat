@@ -137,12 +137,19 @@ export async function suggestRecipes(
 ): Promise<Recipe[]> {
   try {
     if (!validateApiKey()) {
-      // Return relevant fallback recipes based on the prompt
-      const recipes = FALLBACK_RECIPES.map(recipe => ({
+      // Filter fallback recipes based on the prompt
+      const searchTerms = prompt.toLowerCase().split(' ');
+      const filteredRecipes = FALLBACK_RECIPES.filter(recipe => {
+        const searchText = `${recipe.title} ${recipe.description} ${recipe.cuisine}`.toLowerCase();
+        return searchTerms.some(term => searchText.includes(term));
+      });
+      
+      // Return at least one recipe even if no matches
+      const recipesToReturn = filteredRecipes.length > 0 ? filteredRecipes : [FALLBACK_RECIPES[0]];
+      return recipesToReturn.map(recipe => ({
         ...recipe,
         id: `${Date.now()}-${Math.random()}`,
       }));
-      return recipes;
     }
 
     const response = await fetchWithRetry(
@@ -184,11 +191,18 @@ export async function suggestRecipes(
     }));
   } catch (error) {
     console.error('API Error:', error);
-    // Return fallback recipes on error
-    return FALLBACK_RECIPES.map(recipe => ({
-      ...recipe,
-      id: `${Date.now()}-${Math.random()}`,
-    }));
+    // Return filtered fallback recipes on error
+    const searchTerms = prompt.toLowerCase().split(' ');
+    const filteredRecipes = FALLBACK_RECIPES.filter(recipe => {
+      const searchText = `${recipe.title} ${recipe.description} ${recipe.cuisine}`.toLowerCase();
+      return searchTerms.some(term => searchText.includes(term));
+    });
+    
+    return (filteredRecipes.length > 0 ? filteredRecipes : [FALLBACK_RECIPES[0]])
+      .map(recipe => ({
+        ...recipe,
+        id: `${Date.now()}-${Math.random()}`,
+      }));
   }
 }
 
@@ -198,7 +212,6 @@ export async function getCookingAdvice(
 ): Promise<string> {
   try {
     if (!validateApiKey()) {
-      // Return a random fallback response
       return FALLBACK_ADVICE[Math.floor(Math.random() * FALLBACK_ADVICE.length)];
     }
 
@@ -228,7 +241,6 @@ export async function getCookingAdvice(
     return data.choices[0].message.content;
   } catch (error) {
     console.error('API Error:', error);
-    // Return a random fallback response on error
     return FALLBACK_ADVICE[Math.floor(Math.random() * FALLBACK_ADVICE.length)];
   }
 }
