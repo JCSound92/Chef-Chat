@@ -3,6 +3,16 @@ import { Recipe } from './types';
 const API_KEY = import.meta.env.VITE_PERPLEXITY_API_KEY;
 const BASE_URL = 'https://api.perplexity.ai';
 
+// Debug check for environment variables
+if (import.meta.env.MODE === 'production') {
+  console.log('API Environment Check:', {
+    hasApiKey: !!API_KEY,
+    apiKeyLength: API_KEY?.length || 0,
+    mode: import.meta.env.MODE,
+    baseUrl: BASE_URL
+  });
+}
+
 const SYSTEM_PROMPT = `You are a friendly Midwest cooking assistant who helps users find recipes. 
 When suggesting multiple recipes, respond with a JSON array of recipes in this format:
 [{
@@ -37,11 +47,40 @@ async function fetchWithRetry(
   backoff = 500
 ): Promise<Response> {
   try {
-    const response = await fetch(url, options);
+    // Add CORS mode and credentials
+    const fetchOptions: RequestInit = {
+      ...options,
+      mode: 'cors',
+      credentials: 'omit',
+      headers: {
+        ...options.headers,
+        'Accept': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
+    };
+
+    // Log the request details in production for debugging
+    if (import.meta.env.MODE === 'production') {
+      console.log('API Request:', {
+        url,
+        hasAuthHeader: !!fetchOptions.headers?.['Authorization'],
+        method: fetchOptions.method,
+        mode: fetchOptions.mode,
+        headers: Object.keys(fetchOptions.headers || {})
+      });
+    }
+
+    const response = await fetch(url, fetchOptions);
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('API Error:', errorText);
+      console.error('API Error:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText,
+        hasApiKey: !!API_KEY,
+        responseHeaders: Object.fromEntries(response.headers.entries())
+      });
       
       // Handle specific error cases
       if (response.status === 401) {
@@ -59,8 +98,15 @@ async function fetchWithRetry(
     
     return response;
   } catch (error) {
+    console.error('Fetch Error Details:', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      hasApiKey: !!API_KEY,
+      mode: import.meta.env.MODE,
+      url: BASE_URL
+    });
+
     if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-      throw new Error('Network error: Unable to connect to the API. Please check your internet connection.');
+      throw new Error('Unable to connect to the API. This might be due to CORS restrictions or network issues. Please try again.');
     }
     
     if (retries === 0) throw error;
@@ -72,7 +118,12 @@ async function fetchWithRetry(
 
 function validateApiKey() {
   if (!API_KEY) {
-    throw new Error('API key not found. Please make sure VITE_PERPLEXITY_API_KEY is set in your environment variables.');
+    console.error('API Key Validation Failed:', {
+      hasKey: false,
+      mode: import.meta.env.MODE,
+      envVars: Object.keys(import.meta.env).filter(key => key.startsWith('VITE_'))
+    });
+    throw new Error('API key not found. Please check your environment variables in Netlify.');
   }
   
   if (API_KEY === 'your_api_key_here') {
@@ -95,9 +146,7 @@ export async function suggestRecipes(
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${API_KEY}`,
-          'Accept': 'application/json',
-          'Origin': window.location.origin
+          'Authorization': `Bearer ${API_KEY}`
         },
         body: JSON.stringify({
           model,
@@ -116,6 +165,7 @@ export async function suggestRecipes(
     const data = await response.json();
     
     if (!data.choices?.[0]?.message?.content) {
+      console.error('Invalid API Response:', data);
       throw new Error('Invalid API response format. Missing required data.');
     }
     
@@ -123,6 +173,7 @@ export async function suggestRecipes(
     const jsonMatch = content.match(/\[[\s\S]*\]/);
     
     if (!jsonMatch) {
+      console.error('Invalid Response Content:', content);
       throw new Error('Invalid response format: Unable to parse recipe data.');
     }
     
@@ -139,7 +190,12 @@ export async function suggestRecipes(
     }));
   } catch (error) {
     const message = error instanceof Error ? error.message : 'An unexpected error occurred';
-    console.error('Recipe suggestion error:', error);
+    console.error('Recipe suggestion error:', {
+      error: message,
+      hasApiKey: !!API_KEY,
+      mode: import.meta.env.MODE,
+      url: BASE_URL
+    });
     throw new Error(`Recipe suggestion failed: ${message}`);
   }
 }
@@ -157,9 +213,7 @@ export async function getCookingAdvice(
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${API_KEY}`,
-          'Accept': 'application/json',
-          'Origin': window.location.origin
+          'Authorization': `Bearer ${API_KEY}`
         },
         body: JSON.stringify({
           model: 'llama-3.1-70b-instruct',
@@ -178,13 +232,19 @@ export async function getCookingAdvice(
     const data = await response.json();
     
     if (!data.choices?.[0]?.message?.content) {
+      console.error('Invalid API Response:', data);
       throw new Error('Invalid API response format. Missing required data.');
     }
     
     return data.choices[0].message.content;
   } catch (error) {
     const message = error instanceof Error ? error.message : 'An unexpected error occurred';
-    console.error('Cooking advice error:', error);
+    console.error('Cooking advice error:', {
+      error: message,
+      hasApiKey: !!API_KEY,
+      mode: import.meta.env.MODE,
+      url: BASE_URL
+    });
     throw new Error(`Cooking advice failed: ${message}`);
   }
 }
