@@ -2,8 +2,8 @@ import React, { useEffect, useRef } from 'react';
 import { Timer as TimerIcon, X } from 'lucide-react';
 import { useStore } from '../store';
 
-// Kitchen timer sound (looping marimba style)
-const TIMER_SOUND_URL = 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3';
+// Rooster sound (looping)
+const TIMER_SOUND_URL = 'https://assets.mixkit.co/active_storage/sfx/933/933-preview.mp3';
 
 export function Timer() {
   const { isTimerActive, timerSeconds, stopTimer, decrementTimer } = useStore();

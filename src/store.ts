@@ -124,39 +124,20 @@ export const useStore = create<AppState>()(
 
       toggleFavorite: (recipeId) =>
         set((state) => {
-          const recipe = state.recipes.find(r => r.id === recipeId) ||
-                        state.suggestions.find(r => r.id === recipeId) ||
-                        state.filteredRecipes.find(r => r.id === recipeId) ||
-                        state.currentRecipe?.id === recipeId ? state.currentRecipe : null;
-
-          if (!recipe) return state;
-
-          const updatedRecipe = {
-            ...recipe,
-            favorite: !recipe.favorite
+          const updateRecipe = (recipe: Recipe | null): Recipe | null => {
+            if (!recipe || recipe.id !== recipeId) return recipe;
+            return { ...recipe, favorite: !recipe.favorite };
           };
 
           return {
-            recipes: state.recipes.map((r) =>
-              r.id === recipeId ? updatedRecipe : r
-            ),
-            currentRecipe: state.currentRecipe?.id === recipeId
-              ? updatedRecipe
-              : state.currentRecipe,
-            suggestions: state.suggestions.map((r) =>
-              r.id === recipeId ? updatedRecipe : r
-            ),
-            filteredRecipes: state.filteredRecipes.map((r) =>
-              r.id === recipeId ? updatedRecipe : r
-            ),
+            recipes: state.recipes.map(r => updateRecipe(r) || r),
+            currentRecipe: updateRecipe(state.currentRecipe),
+            suggestions: state.suggestions.map(r => updateRecipe(r) || r),
+            filteredRecipes: state.filteredRecipes.map(r => updateRecipe(r) || r),
             currentMeal: {
               ...state.currentMeal,
-              recipes: state.currentMeal.recipes.map((r) =>
-                r.id === recipeId ? updatedRecipe : r
-              ),
-              originalRecipes: state.currentMeal.originalRecipes?.map((r) =>
-                r.id === recipeId ? updatedRecipe : r
-              ) || []
+              recipes: state.currentMeal.recipes.map(r => updateRecipe(r) || r),
+              originalRecipes: state.currentMeal.originalRecipes?.map(r => updateRecipe(r) || r) || []
             }
           };
         }),
