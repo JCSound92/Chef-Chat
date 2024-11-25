@@ -7,7 +7,6 @@ const BASE_URL = 'https://api.perplexity.ai';
 if (import.meta.env.MODE === 'development') {
   console.log('API Environment Check:', {
     hasApiKey: !!API_KEY,
-    apiKeyLength: API_KEY?.length || 0,
     mode: import.meta.env.MODE,
     baseUrl: BASE_URL
   });
