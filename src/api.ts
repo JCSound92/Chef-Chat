@@ -186,7 +186,7 @@ export async function suggestRecipes(
 
 export async function getCookingAdvice(
   question: string,
-  recipe: Recipe
+  recipe: Recipe | null
 ): Promise<string> {
   try {
     validateApiKey();
@@ -199,7 +199,10 @@ export async function getCookingAdvice(
           model: 'llama-3.1-70b-instruct',
           messages: [
             { role: 'system', content: COOKING_PROMPT },
-            { role: 'user', content: `I'm cooking ${recipe.title}. ${question}` },
+            { role: 'user', content: recipe 
+              ? `I'm cooking ${recipe.title}. ${question}`
+              : question 
+            },
           ],
           temperature: 0.6,
           max_tokens: 200,

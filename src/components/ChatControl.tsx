@@ -71,7 +71,6 @@ export function ChatControl() {
     }
   };
 
-  // Handle input changes for search views
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setInput(value);
@@ -109,21 +108,17 @@ export function ChatControl() {
     const query = input.trim().toLowerCase();
     setInput('');
 
-    // For search views, filtering is already handled by input change
     if (isSearchView) {
+      filterRecipes(query);
       return;
     }
 
-    // Add user message first for better UX in chat mode
     if (chatMode) {
       addChatMessage(query, 'user');
-    }
-    // Clear previous cooking response when in cooking mode
-    else if (isCookingMode) {
+    } else if (isCookingMode) {
       setCookingResponse(null);
     }
 
-    // Handle serving adjustments
     if (handleServingAdjustment(query)) {
       return;
     }
@@ -131,7 +126,6 @@ export function ChatControl() {
     try {
       setIsLoading(true);
 
-      // Handle cooking mode chat
       if (isCookingMode) {
         const activeRecipe = currentMeal.recipes[0] || currentRecipe;
         if (!activeRecipe) {
@@ -143,21 +137,23 @@ export function ChatControl() {
         } else {
           throw new Error('No response received');
         }
-      }
-      // Handle chat mode
-      else if (chatMode) {
-        const response = await getCookingAdvice(query, currentRecipe || currentMeal.recipes[0] || { title: '' });
+      } else if (chatMode) {
+        const isAboutCurrentMeal = query.toLowerCase().includes('this meal') || 
+                                 query.toLowerCase().includes('my meal') ||
+                                 query.toLowerCase().includes('the meal');
+
+        const response = await getCookingAdvice(
+          query, 
+          isAboutCurrentMeal ? (currentMeal.recipes[0] || currentRecipe || null) : null
+        );
         if (response) {
           addChatMessage(response, 'chef');
         } else {
           throw new Error('No response received');
         }
-      }
-      // Handle recipe suggestions
-      else {
+      } else {
         let enhancedQuery = query;
         if (currentMeal.recipes.length > 0) {
-          // Add context about existing meal for better suggestions
           const mealTypes = currentMeal.recipes.map(r => r.type || 'main').join(', ');
           enhancedQuery = `Suggest ${query} that would complement a meal with: ${mealTypes}`;
         }
@@ -186,7 +182,7 @@ export function ChatControl() {
 
   return (
     <>
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 shadow-lg">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 shadow-lg chat-input-container">
         <form onSubmit={handleSubmit} className="max-w-3xl mx-auto p-4">
           <div className="relative flex items-center gap-3">
             {isLoading ? (
@@ -213,15 +209,14 @@ export function ChatControl() {
           </div>
         </form>
       </div>
-      <div className="h-20" />
       
-      {/* Only show CookingCoachResponse in cooking mode */}
       {isCookingMode && cookingResponse && (
         <CookingCoachResponse 
           response={cookingResponse} 
           onDismiss={() => setCookingResponse(null)} 
         />
       )}
+      <div className="h-20" />
     </>
   );
 }

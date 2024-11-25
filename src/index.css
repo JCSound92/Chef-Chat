@@ -1,7 +1,9 @@
+/* Tailwind base styles */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Base styles */
 @layer base {
   body {
     @apply antialiased text-[#333333] bg-[#F8F8F8];
@@ -19,6 +21,7 @@
   }
 }
 
+/* Component styles */
 @layer components {
   .btn {
     @apply px-6 py-3 rounded-xl font-medium transition-all duration-200 transform hover:scale-105;
@@ -38,9 +41,17 @@
 
   .content-container {
     @apply flex-1 overflow-y-auto px-4 md:px-8;
+    height: calc(100vh - theme('spacing.16')); /* Account for header height */
+    scroll-behavior: smooth;
+  }
+
+  /* Center content for specific views */
+  .home-container, .cooking-container {
+    @apply flex items-center justify-center min-h-full;
   }
 }
 
+/* Utility styles */
 @layer utilities {
   .animate-pulse-slow {
     animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
@@ -62,6 +73,7 @@
   }
 }
 
+/* Animations */
 @keyframes float {
   0% {
     transform: translateY(0px);
@@ -71,5 +83,12 @@
   }
   100% {
     transform: translateY(0px);
+  }
+}
+
+/* Mobile keyboard behavior */
+@supports (-webkit-touch-callout: none) {
+  .chat-input-container {
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }

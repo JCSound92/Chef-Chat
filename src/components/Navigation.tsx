@@ -35,23 +35,34 @@ export function Navigation() {
     navigate('/');
   };
 
+  const handleChatClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setCurrentRecipe(null);
+    setChatMode(true);
+    navigate('/chat');
+  };
+
   const pendingItems = shoppingList.filter(item => !item.completed).length;
 
   return (
     <header className="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-lg shadow-sm z-50">
       <div className="max-w-3xl mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          <Link to="/" className="flex items-center gap-2">
-            <ChefHat className="w-6 h-6 text-[#e05f3e]" />
-          </Link>
+          <button
+            onClick={handleHomeClick}
+            className="p-2 hover:bg-gray-100 rounded-lg"
+            title="Home"
+          >
+            <Home className="w-6 h-6 text-[#333333]" />
+          </button>
 
           <div className="flex items-center gap-2">
             <button
-              onClick={handleHomeClick}
+              onClick={handleChatClick}
               className="p-2 hover:bg-gray-100 rounded-lg"
-              title="Home"
+              title="Chat with Chef"
             >
-              <Home className="w-6 h-6 text-[#333333]" />
+              <ChefHat className="w-6 h-6 text-[#e05f3e]" />
             </button>
             <button
               onClick={handleSearchClick}
