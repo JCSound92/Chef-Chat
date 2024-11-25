@@ -7,4 +7,16 @@ export default defineConfig({
     host: true,
     port: 5173,
   },
+  build: {
+    sourcemap: true,
+    outDir: 'dist',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'ui-vendor': ['framer-motion', 'lucide-react', 'react-hot-toast']
+        }
+      }
+    }
+  }
 });
