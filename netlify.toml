@@ -4,7 +4,6 @@
 
 [build.environment]
   NODE_VERSION = "20"
-  VITE_PERPLEXITY_API_KEY = "dummy"
 
 [[redirects]]
   from = "/api/*"

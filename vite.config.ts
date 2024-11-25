@@ -7,6 +7,11 @@ export default defineConfig({
     host: true,
     port: 5173,
   },
+  resolve: {
+    alias: {
+      '@': '/src'
+    }
+  },
   build: {
     sourcemap: true,
     outDir: 'dist',
@@ -18,6 +23,5 @@ export default defineConfig({
         }
       }
     }
-  },
-  envPrefix: 'VITE_'
+  }
 });

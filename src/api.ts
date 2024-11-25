@@ -61,8 +61,7 @@ async function fetchWithRetry(
       'Content-Type': 'application/json'
     };
 
-    // Only add API key if it's not the dummy value used for build
-    if (API_KEY && API_KEY !== 'dummy') {
+    if (API_KEY) {
       headers['Authorization'] = `Bearer ${API_KEY}`;
     }
 
@@ -119,7 +118,7 @@ async function fetchWithRetry(
 }
 
 function validateApiKey() {
-  if (!API_KEY || API_KEY === 'dummy') {
+  if (!API_KEY) {
     throw new Error('API key not found. Please check your environment variables.');
   }
   return true;
