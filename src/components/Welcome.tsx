@@ -43,7 +43,7 @@ export function Welcome() {
 
   const handleModeSelect = (mode: typeof MODES[0]) => {
     if (mode.id === 'chat') {
-      clearChatHistory();
+      clearChatHistory('chef');
       setChatMode(true);
     }
   };

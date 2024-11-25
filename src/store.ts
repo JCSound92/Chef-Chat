@@ -59,17 +59,17 @@ export const useStore = create<AppState>()(
         servings: 4,
         originalRecipes: []
       },
+      cookingState: {
+        isActive: false,
+        currentStepIndex: 0,
+        currentRecipeIndex: 0
+      },
       voiceState: {
         isListening: false,
         error: null,
         transcript: ''
       },
       mealPlans: [],
-      cookingState: {
-        isActive: false,
-        currentStepIndex: 0,
-        currentRecipeIndex: 0
-      },
 
       // Actions
       setIsLoading: (loading) => set({ isLoading: loading }),
