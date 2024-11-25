@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Mic, MicOff } from 'lucide-react';
 import { useStore } from '../store';
 import { suggestRecipes } from '../api';
+import type { VoiceState } from '../types';
 
 declare global {
   interface Window {
@@ -40,7 +41,6 @@ export function VoiceControl() {
   const recognitionRef = useRef<any>(null);
   const isInitializedRef = useRef(false);
 
-  // Initialize speech recognition once
   useEffect(() => {
     if (isInitializedRef.current) return;
 
@@ -53,11 +53,11 @@ export function VoiceControl() {
         recognition.lang = 'en-US';
 
         recognition.onstart = () => {
-          setVoiceState(prev => ({ ...prev, isListening: true, error: null }));
+          setVoiceState({ isListening: true, error: null });
         };
 
         recognition.onend = () => {
-          setVoiceState(prev => ({ ...prev, isListening: false }));
+          setVoiceState({ isListening: false });
         };
 
         recognition.onerror = (event: any) => {
@@ -77,7 +77,7 @@ export function VoiceControl() {
           if (event.results[0].isFinal) {
             processVoiceCommand(transcript);
           } else {
-            setVoiceState(prev => ({ ...prev, transcript }));
+            setVoiceState({ transcript });
           }
         };
 
@@ -100,7 +100,6 @@ export function VoiceControl() {
     }
   }, [setVoiceState]);
 
-  // Update context based on app state
   useEffect(() => {
     if (isCooking) {
       setCurrentContext(VOICE_CONTEXTS.COOKING);
@@ -120,7 +119,8 @@ export function VoiceControl() {
     } catch (error) {
       setVoiceState({ 
         error: error instanceof Error ? error.message : 'Failed to search recipes',
-        isListening: false 
+        isListening: false,
+        transcript: ''
       });
     } finally {
       setIsLoading(false);
@@ -172,11 +172,12 @@ export function VoiceControl() {
       console.error('Error processing command:', error);
       setVoiceState({ 
         error: error instanceof Error ? error.message : 'Failed to process command',
-        isListening: false 
+        isListening: false,
+        transcript: ''
       });
     } finally {
       setProcessingCommand(false);
-      setVoiceState(prev => ({ ...prev, transcript: '' }));
+      setVoiceState({ transcript: '' });
     }
   };
 
@@ -196,9 +197,7 @@ export function VoiceControl() {
       if (voiceState.isListening) {
         recognitionRef.current.stop();
       } else {
-        // Reset state before starting
-        setVoiceState(prev => ({ ...prev, error: null, transcript: '' }));
-        // Small delay to ensure state is updated
+        setVoiceState({ error: null, transcript: '' });
         await new Promise(resolve => setTimeout(resolve, 100));
         recognitionRef.current.start();
       }

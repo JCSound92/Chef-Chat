@@ -9,19 +9,11 @@ interface ImportMetaEnv {
   }
   
   declare module 'react-hot-toast' {
-    const toast: {
-      (message: string | React.ReactNode, options?: ToastOptions): string;
-      success(message: string | React.ReactNode, options?: ToastOptions): string;
-      error(message: string | React.ReactNode, options?: ToastOptions): string;
-      loading(message: string | React.ReactNode, options?: ToastOptions): string;
-      custom(message: string | React.ReactNode, options?: ToastOptions): string;
-      dismiss(toastId?: string): void;
-      remove(toastId?: string): void;
-    };
+    import { ReactNode } from 'react';
   
-    export interface ToastOptions {
+    interface ToastOptions {
       id?: string;
-      icon?: React.ReactNode;
+      icon?: ReactNode;
       duration?: number;
       position?: ToastPosition;
       className?: string;
@@ -42,5 +34,16 @@ interface ImportMetaEnv {
       | 'bottom-right'
       | 'custom';
   
+    interface Toast {
+      (message: string | ReactNode, options?: ToastOptions): string;
+      success(message: string | ReactNode, options?: ToastOptions): string;
+      error(message: string | ReactNode, options?: ToastOptions): string;
+      loading(message: string | ReactNode, options?: ToastOptions): string;
+      custom<T = any>(render: (t: T) => ReactNode, options?: ToastOptions): string;
+      dismiss(toastId?: string): void;
+      remove(toastId?: string): void;
+    }
+  
+    const toast: Toast;
     export default toast;
   }

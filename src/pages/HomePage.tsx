@@ -12,7 +12,7 @@ const MODES = [
     description: 'Create a multi-course meal plan',
     color: '#e05f3e',
     path: '/search',
-    searchMode: 'plan'
+    searchMode: 'plan' as const
   },
   {
     id: 'find',
@@ -21,7 +21,7 @@ const MODES = [
     description: 'Search for a specific recipe',
     color: '#95cad4',
     path: '/search',
-    searchMode: 'recipe'
+    searchMode: 'recipe' as const
   },
   {
     id: 'fridge',
@@ -30,7 +30,7 @@ const MODES = [
     description: 'Find recipes with ingredients you have',
     color: '#982517',
     path: '/search',
-    searchMode: 'ingredients'
+    searchMode: 'ingredients' as const
   },
   {
     id: 'chat',
@@ -40,16 +40,15 @@ const MODES = [
     color: '#e05f3e',
     path: '/chat'
   }
-];
+] as const;
 
 export function HomePage() {
   const navigate = useNavigate();
   const { setChatMode, setSearchMode, clearSearch, addChatMessage } = useStore();
 
-  const handleModeSelect = (mode: typeof MODES[0]) => {
+  const handleModeSelect = (mode: typeof MODES[number]) => {
     if (mode.id === 'chat') {
       setChatMode(true);
-      // Add a new welcome message when entering chat mode
       const welcomeMessages = [
         "What ya need?",
         "What's on your mind?",
@@ -63,8 +62,7 @@ export function HomePage() {
       const randomMessage = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
       addChatMessage(randomMessage, 'chef');
       navigate(mode.path);
-    } else {
-      // Only clear search when starting a new search mode
+    } else if (mode.searchMode) {
       clearSearch();
       setSearchMode(mode.searchMode);
       navigate(mode.path);
