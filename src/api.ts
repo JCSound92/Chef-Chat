@@ -4,7 +4,7 @@ const API_KEY = import.meta.env.VITE_PERPLEXITY_API_KEY;
 const BASE_URL = 'https://api.perplexity.ai';
 
 // Debug check for environment variables
-if (import.meta.env.MODE === 'production') {
+if (import.meta.env.MODE === 'development') {
   console.log('API Environment Check:', {
     hasApiKey: !!API_KEY,
     apiKeyLength: API_KEY?.length || 0,
@@ -58,9 +58,13 @@ async function fetchWithRetry(
 ): Promise<Response> {
   try {
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${API_KEY}`
+      'Content-Type': 'application/json'
     };
+
+    // Only add API key if it's not the dummy value used for build
+    if (API_KEY && API_KEY !== 'dummy') {
+      headers['Authorization'] = `Bearer ${API_KEY}`;
+    }
 
     const fetchOptions: RequestInit = {
       ...options,
@@ -69,7 +73,7 @@ async function fetchWithRetry(
       }
     };
 
-    if (import.meta.env.MODE === 'production') {
+    if (import.meta.env.MODE === 'development') {
       console.log('Making API request:', {
         url,
         method: fetchOptions.method,
@@ -115,7 +119,7 @@ async function fetchWithRetry(
 }
 
 function validateApiKey() {
-  if (!API_KEY) {
+  if (!API_KEY || API_KEY === 'dummy') {
     throw new Error('API key not found. Please check your environment variables.');
   }
   return true;
