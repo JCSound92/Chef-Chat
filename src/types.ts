@@ -46,6 +46,19 @@ export interface OnboardingState {
   };
 }
 
+export interface VoiceState {
+  isListening: boolean;
+  error: string | null;
+  transcript: string;
+}
+
+export interface MealPlan {
+  id: string;
+  name: string;
+  recipes: Recipe[];
+  createdAt: Date;
+}
+
 export interface AppState {
   recipes: Recipe[];
   filteredRecipes: Recipe[];
@@ -66,6 +79,8 @@ export interface AppState {
   lastRecipeRequest: string;
   currentMeal: CurrentMeal;
   onboarding: OnboardingState;
+  voiceState: VoiceState;
+  mealPlans: MealPlan[];
 
   // Actions
   setIsLoading: (loading: boolean) => void;
@@ -97,4 +112,12 @@ export interface AppState {
   startTimer: (minutes: number) => void;
   stopTimer: () => void;
   decrementTimer: () => void;
+  setVoiceState: (state: Partial<VoiceState>) => void;
+  nextStep: () => void;
+  previousStep: () => void;
+  createMealPlan: (name: string) => void;
+  deleteMealPlan: (id: string) => void;
+  setCurrentMealPlan: (plan: MealPlan | null) => void;
+  removeRecipeFromMealPlan: (planId: string, recipeId: string) => void;
+  addMealPlanToShoppingList: (planId: string) => void;
 }

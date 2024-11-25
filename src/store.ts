@@ -1,10 +1,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { AppState, Recipe, ShoppingListItem } from './types';
+import { AppState, Recipe, ShoppingListItem, MealPlan, VoiceState } from './types';
 import { parseIngredient, formatIngredient, consolidateIngredients } from './utils/ingredientParser';
 
-const MAX_CHAT_HISTORY = 100; // Keep last 100 messages
-const RECIPES_PER_PAGE = 3; // Number of recipes to fetch per request
+const MAX_CHAT_HISTORY = 100;
 
 const createSearchIndex = (recipe: Recipe): string => 
   `${recipe.title} ${recipe.description || ''} ${recipe.cuisine || ''} ${
@@ -47,6 +46,12 @@ export const useStore = create<AppState>()(
           cookingMode: false
         }
       },
+      voiceState: {
+        isListening: false,
+        error: null,
+        transcript: ''
+      },
+      mealPlans: [],
 
       // Actions
       setIsLoading: (loading) => set({ isLoading: loading }),
@@ -259,7 +264,77 @@ export const useStore = create<AppState>()(
 
       decrementTimer: () => set((state) => ({
         timerSeconds: Math.max(0, state.timerSeconds - 1)
-      }))
+      })),
+
+      // New actions for voice control
+      setVoiceState: (newState) => set((state) => ({
+        voiceState: { ...state.voiceState, ...newState }
+      })),
+
+      nextStep: () => set((state) => ({
+        currentStep: Math.min(
+          state.currentStep + 1,
+          (state.currentRecipe?.steps.length || 0) - 1
+        )
+      })),
+
+      previousStep: () => set((state) => ({
+        currentStep: Math.max(0, state.currentStep - 1)
+      })),
+
+      // New actions for meal plans
+      createMealPlan: (name) => set((state) => ({
+        mealPlans: [
+          ...state.mealPlans,
+          {
+            id: `${Date.now()}-${Math.random()}`,
+            name,
+            recipes: [],
+            createdAt: new Date()
+          }
+        ]
+      })),
+
+      deleteMealPlan: (id) => set((state) => ({
+        mealPlans: state.mealPlans.filter(plan => plan.id !== id)
+      })),
+
+      setCurrentMealPlan: (plan) => set((state) => ({
+        currentMeal: plan ? {
+          recipes: plan.recipes,
+          status: 'building',
+          servings: 4,
+          originalRecipes: plan.recipes
+        } : state.currentMeal
+      })),
+
+      removeRecipeFromMealPlan: (planId, recipeId) => set((state) => ({
+        mealPlans: state.mealPlans.map(plan =>
+          plan.id === planId
+            ? { ...plan, recipes: plan.recipes.filter(r => r.id !== recipeId) }
+            : plan
+        )
+      })),
+
+      addMealPlanToShoppingList: (planId) => set((state) => {
+        const plan = state.mealPlans.find(p => p.id === planId);
+        if (!plan) return state;
+
+        const allIngredients = plan.recipes.flatMap(r => r.ingredients);
+        const consolidated = consolidateIngredients(allIngredients);
+
+        return {
+          shoppingList: [
+            ...state.shoppingList,
+            ...consolidated.map(item => ({
+              id: `${Date.now()}-${Math.random()}`,
+              name: item,
+              recipeId: null,
+              completed: false
+            }))
+          ]
+        };
+      })
     }),
     {
       name: 'recipe-storage',
@@ -272,8 +347,9 @@ export const useStore = create<AppState>()(
         lastSearch: state.lastSearch,
         suggestions: state.suggestions,
         searchMode: state.searchMode,
-        chatHistory: state.chatHistory
-      }),
+        chatHistory: state.chatHistory,
+        mealPlans: state.mealPlans
+      })
     }
   )
 );
