@@ -5,7 +5,7 @@ import { useStore } from '../store';
 import { suggestRecipes, getCookingAdvice } from '../api';
 import toast from 'react-hot-toast';
 import { CookingCoachResponse } from './CookingCoachResponse';
-import debounce from 'lodash/debounce';
+import { debounce } from '../utils/debounce';
 
 export function ChatControl(): JSX.Element {
   const [input, setInput] = useState('');
