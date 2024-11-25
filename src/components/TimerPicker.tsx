@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, ChevronUp, ChevronDown } from 'lucide-react';
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+import { X } from 'lucide-react';
 
 interface ScrollPickerProps {
   values: number[];
@@ -10,121 +10,43 @@ interface ScrollPickerProps {
 }
 
 function ScrollPicker({ values, value, onChange, label }: ScrollPickerProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [startY, setStartY] = useState(0);
-  const [scrollTop, setScrollTop] = useState(0);
   const itemHeight = 40;
-
-  useEffect(() => {
-    if (containerRef.current) {
-      const index = values.indexOf(value);
-      containerRef.current.scrollTop = index * itemHeight;
-      setScrollTop(index * itemHeight);
-    }
-  }, [value, values]);
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setIsDragging(true);
-    setStartY(e.touches[0].clientY);
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isDragging || !containerRef.current) return;
-    
-    e.preventDefault();
-    const deltaY = startY - e.touches[0].clientY;
-    const newScrollTop = scrollTop + deltaY;
-    containerRef.current.scrollTop = newScrollTop;
-    
-    const index = Math.round(newScrollTop / itemHeight);
-    const newValue = values[index];
-    if (newValue !== undefined && newValue !== value) {
-      onChange(newValue);
-    }
-    
-    setStartY(e.touches[0].clientY);
-    setScrollTop(newScrollTop);
-  };
-
-  const handleTouchEnd = () => {
-    setIsDragging(false);
-  };
+  const visibleItems = 5;
+  const halfVisibleItems = Math.floor(visibleItems / 2);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    if (!isDragging) {
-      const newScrollTop = e.currentTarget.scrollTop;
-      const index = Math.round(newScrollTop / itemHeight);
-      const newValue = values[index];
-      if (newValue !== undefined && newValue !== value) {
-        onChange(newValue);
-      }
-      setScrollTop(newScrollTop);
-    }
-  };
-
-  const handleWheel = (e: React.WheelEvent) => {
-    if (!containerRef.current) return;
-    
-    e.preventDefault();
-    const newScrollTop = scrollTop + e.deltaY;
-    containerRef.current.scrollTop = newScrollTop;
-    
-    const index = Math.round(newScrollTop / itemHeight);
-    const newValue = values[index];
-    if (newValue !== undefined && newValue !== value) {
+    const scrollTop = e.currentTarget.scrollTop;
+    const index = Math.round(scrollTop / itemHeight);
+    const newValue = values[Math.min(Math.max(0, index), values.length - 1)];
+    if (newValue !== value) {
       onChange(newValue);
-    }
-    
-    setScrollTop(newScrollTop);
-  };
-
-  const increment = () => {
-    const currentIndex = values.indexOf(value);
-    if (currentIndex < values.length - 1) {
-      onChange(values[currentIndex + 1]);
+      // Snap to the closest value
+      requestAnimationFrame(() => {
+        e.currentTarget.scrollTop = index * itemHeight;
+      });
     }
   };
 
-  const decrement = () => {
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const delta = Math.sign(e.deltaY);
     const currentIndex = values.indexOf(value);
-    if (currentIndex > 0) {
-      onChange(values[currentIndex - 1]);
-    }
+    const newIndex = Math.min(Math.max(0, currentIndex + delta), values.length - 1);
+    onChange(values[newIndex]);
   };
 
   return (
     <div className="flex flex-col items-center">
       <div className="text-xs text-gray-500 mb-1">{label}</div>
-      <div className="relative">
-        <div className="absolute -left-8 top-1/2 -translate-y-1/2 flex flex-col gap-2 md:flex hidden">
-          <button
-            onClick={increment}
-            className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <ChevronUp className="w-4 h-4 text-gray-400" />
-          </button>
-          <button
-            onClick={decrement}
-            className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <ChevronDown className="w-4 h-4 text-gray-400" />
-          </button>
-        </div>
-
+      <div className="relative w-16">
         <div className="absolute inset-0 pointer-events-none">
           <div className="h-[80px]" />
           <div className="h-[40px] border-t border-b border-[#FF6B6B]/20" />
         </div>
         <div 
-          className="h-[200px] overflow-y-scroll no-scrollbar relative touch-pan-y"
-          ref={containerRef}
+          className="h-[200px] overflow-y-scroll no-scrollbar relative scroll-smooth"
           onScroll={handleScroll}
           onWheel={handleWheel}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-          onTouchCancel={handleTouchEnd}
         >
           <div className="h-[80px]" />
           {values.map((num) => (
