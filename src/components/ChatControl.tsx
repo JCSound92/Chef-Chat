@@ -34,15 +34,15 @@ export function ChatControl() {
   const isSearchView = location.pathname === '/recent' || location.pathname === '/saved';
   const isSearchMode = location.pathname === '/search';
   const isChefMode = chatMode && location.pathname === '/chat';
-  const isCookingMode = isCooking || location.pathname === '/cooking';
+  const isCookingMode = location.pathname === '/cooking';
   const isMealPlanMode = location.pathname === '/current-meal';
 
   // Clear cooking chat when leaving cooking mode
   React.useEffect(() => {
-    if (!isCookingMode) {
+    if (!isCookingMode && chatContexts.cooking) {
       clearChatHistory('cooking');
     }
-  }, [isCookingMode, clearChatHistory]);
+  }, [isCookingMode, clearChatHistory, chatContexts.cooking]);
 
   const debouncedSearch = useCallback(
     debounce((value: string) => {
@@ -118,7 +118,6 @@ export function ChatControl() {
     }
 
     if (isCookingMode) {
-      addChatMessage(query, 'user', 'cooking');
       try {
         setIsLoading(true);
         const response = await getCookingAdvice(
@@ -126,6 +125,7 @@ export function ChatControl() {
           currentRecipe || currentMeal.recipes[0]
         );
         if (response) {
+          addChatMessage(query, 'user', 'cooking');
           addChatMessage(response, 'chef', 'cooking');
         }
       } catch (error) {
@@ -215,9 +215,7 @@ export function ChatControl() {
 
   return (
     <>
-      {isCookingMode && <CookingCoachResponse response={''} onDismiss={function (): void {
-        throw new Error('Function not implemented.');
-      } } />}
+      {isCookingMode && chatContexts.cooking && <CookingCoachResponse />}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 shadow-lg chat-input-container">
         <form onSubmit={handleSubmit} className="max-w-3xl mx-auto p-4">
           <div className="relative flex items-center gap-3">

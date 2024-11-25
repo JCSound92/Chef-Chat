@@ -1,21 +1,25 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ChefHat } from 'lucide-react';
+import { useStore } from '../store';
 
-interface CookingCoachResponseProps {
-  response: string;
-  onDismiss: () => void;
-}
+export function CookingCoachResponse() {
+  const { chatContexts, clearChatHistory } = useStore();
+  const message = chatContexts.cooking;
 
-export function CookingCoachResponse({ response, onDismiss }: CookingCoachResponseProps) {
   React.useEffect(() => {
-    const timer = setTimeout(onDismiss, 10000); // 10 seconds
-    return () => clearTimeout(timer);
-  }, [response, onDismiss]);
+    if (message) {
+      const timer = setTimeout(() => {
+        clearChatHistory('cooking');
+      }, 10000); // 10 seconds
+      return () => clearTimeout(timer);
+    }
+  }, [message, clearChatHistory]);
+
+  if (!message) return null;
 
   return (
     <motion.div 
-      key="cooking-coach-response"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
@@ -27,7 +31,7 @@ export function CookingCoachResponse({ response, onDismiss }: CookingCoachRespon
             <ChefHat className="w-5 h-5 text-white" />
           </div>
           <div className="flex-1">
-            <p className="text-gray-700 leading-relaxed">{response}</p>
+            <p className="text-gray-700 leading-relaxed">{message.message}</p>
           </div>
         </div>
       </div>
