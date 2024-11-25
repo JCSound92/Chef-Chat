@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Clock, Plus, Check, Heart } from 'lucide-react';
+import { Clock, Plus, Check, Heart, ChevronDown } from 'lucide-react';
 import { useStore } from '../store';
 import { RecipeModal } from './RecipeModal';
 import { motion } from 'framer-motion';
+import { suggestRecipes } from '../api';
 import type { Recipe } from '../types';
 
 interface RecipeSuggestionsProps {
@@ -10,8 +11,19 @@ interface RecipeSuggestionsProps {
 }
 
 export function RecipeSuggestions({ placeholderText }: RecipeSuggestionsProps) {
-  const { suggestions, addToCurrentMeal, toggleFavorite, setCurrentRecipe, currentRecipe } = useStore();
+  const { 
+    suggestions, 
+    addToCurrentMeal, 
+    toggleFavorite, 
+    setCurrentRecipe, 
+    currentRecipe,
+    lastRecipeRequest,
+    setSuggestions,
+    setIsLoading
+  } = useStore();
+  
   const [addedRecipes, setAddedRecipes] = useState<Record<string, boolean>>({});
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const handleAddToMeal = (recipe: Recipe) => {
     addToCurrentMeal(recipe);
@@ -19,6 +31,20 @@ export function RecipeSuggestions({ placeholderText }: RecipeSuggestionsProps) {
     setTimeout(() => {
       setAddedRecipes(prev => ({ ...prev, [recipe.id]: false }));
     }, 2000);
+  };
+
+  const handleLoadMore = async () => {
+    if (isLoadingMore || !lastRecipeRequest) return;
+    
+    try {
+      setIsLoadingMore(true);
+      const moreRecipes = await suggestRecipes(lastRecipeRequest);
+      setSuggestions(moreRecipes, lastRecipeRequest, true); // true for append
+    } catch (error) {
+      console.error('Failed to load more recipes:', error);
+    } finally {
+      setIsLoadingMore(false);
+    }
   };
 
   return (
@@ -84,6 +110,28 @@ export function RecipeSuggestions({ placeholderText }: RecipeSuggestionsProps) {
                 </button>
               </div>
             ))}
+
+            {suggestions.length > 0 && (
+              <button
+                onClick={handleLoadMore}
+                disabled={isLoadingMore}
+                className="w-full py-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-all text-[#e05f3e] font-medium flex items-center justify-center gap-2"
+              >
+                {isLoadingMore ? (
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  >
+                    <ChevronDown className="w-5 h-5" />
+                  </motion.div>
+                ) : (
+                  <>
+                    <ChevronDown className="w-5 h-5" />
+                    More Recipes
+                  </>
+                )}
+              </button>
+            )}
           </div>
         </div>
       </div>

@@ -4,8 +4,8 @@ import { Search, Loader2, Send } from 'lucide-react';
 import { useStore } from '../store';
 import { suggestRecipes, getCookingAdvice } from '../api';
 import toast from 'react-hot-toast';
-import { CookingCoachResponse } from './CookingCoachResponse';
 import { debounce } from '../utils/debounce';
+import { CookingCoachResponse } from './CookingCoachResponse';
 
 export function ChatControl(): JSX.Element {
   const [input, setInput] = useState('');
@@ -25,7 +25,8 @@ export function ChatControl(): JSX.Element {
     isLoading,
     filterRecipes,
     chatMode,
-    addChatMessage
+    addChatMessage,
+    lastRecipeRequest
   } = useStore();
 
   const isSearchView = location.pathname === '/recent' || location.pathname === '/saved';
@@ -80,14 +81,7 @@ export function ChatControl(): JSX.Element {
       return "What would you like to cook tonight?";
     }
 
-    switch (location.pathname) {
-      case '/':
-        return "What do you want to cook tonight?";
-      case '/shopping-list':
-        return "Ask about ingredients or substitutions...";
-      default:
-        return "How can I help with your cooking?";
-    }
+    return "What do you want to cook tonight?";
   };
 
   const handleServingAdjustment = (command: string) => {
@@ -135,7 +129,11 @@ export function ChatControl(): JSX.Element {
       setIsLoading(true);
 
       if (chatMode || isCookingMode) {
-        const response = await getCookingAdvice(query, currentRecipe);
+        const response = await getCookingAdvice(
+          query, 
+          isCookingMode ? currentRecipe || currentMeal.recipes[0] : null
+        );
+        
         if (response) {
           if (isCookingMode) {
             setCookingResponse(response);
@@ -146,7 +144,7 @@ export function ChatControl(): JSX.Element {
           throw new Error('No response received');
         }
       } else {
-        const recipes = await suggestRecipes(query, currentMeal.recipes);
+        const recipes = await suggestRecipes(query);
         if (recipes && recipes.length > 0) {
           setSuggestions(recipes, query);
           setCurrentRecipe(null);

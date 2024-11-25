@@ -26,7 +26,6 @@ export interface ShoppingListItem {
   name: string;
   recipeId: string | null;
   completed: boolean;
-  quantity?: string;
 }
 
 export interface ChatMessage {
@@ -62,13 +61,15 @@ export interface AppState {
   showRecipePanel: boolean;
   shoppingList: ShoppingListItem[];
   isLoading: boolean;
-  currentMeal: CurrentMeal;
   chatMode: boolean;
   chatHistory: ChatMessage[];
+  lastRecipeRequest: string;
+  currentMeal: CurrentMeal;
   onboarding: OnboardingState;
 
+  // Actions
   setIsLoading: (loading: boolean) => void;
-  setSuggestions: (recipes: Recipe[], searchQuery?: string) => void;
+  setSuggestions: (recipes: Recipe[], searchQuery?: string, append?: boolean) => void;
   setSearchMode: (mode: 'plan' | 'recipe' | 'ingredients') => void;
   setCurrentRecipe: (recipe: Recipe | null) => void;
   toggleFavorite: (recipeId: string) => void;
