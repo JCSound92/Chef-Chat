@@ -47,6 +47,8 @@ export function HomePage() {
   const { setChatMode, setSearchMode, clearSearch, addChatMessage } = useStore();
 
   const handleModeSelect = (mode: typeof MODES[number]) => {
+    clearSearch();
+    
     if (mode.id === 'chat') {
       setChatMode(true);
       const welcomeMessages = [
@@ -63,7 +65,7 @@ export function HomePage() {
       addChatMessage(randomMessage, 'chef');
       navigate(mode.path);
     } else if (mode.searchMode) {
-      clearSearch();
+      setChatMode(false);
       setSearchMode(mode.searchMode);
       navigate(mode.path);
     }

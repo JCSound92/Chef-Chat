@@ -1,16 +1,16 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Utensils, ShoppingCart, Heart, Search, History, BookmarkCheck } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import useMeasure from 'react-use-measure';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 const STAGES = [
-  { path: '/', title: 'Find Recipes', icon: Search },
-  { path: '/recent', title: 'Recent Recipes', icon: History },
-  { path: '/saved', title: 'Saved Recipes', icon: BookmarkCheck },
-  { path: '/current-meal', title: "Tonight's Meal", icon: Heart },
-  { path: '/shopping-list', title: 'Shopping List', icon: ShoppingCart },
-  { path: '/cooking', title: 'Cooking Mode', icon: Utensils }
+  { path: '/', title: 'Find Recipes' },
+  { path: '/recent', title: 'Recent Recipes' },
+  { path: '/saved', title: 'Saved Recipes' },
+  { path: '/current-meal', title: "Tonight's Meal" },
+  { path: '/shopping-list', title: 'Shopping List' },
+  { path: '/cooking', title: 'Cooking Mode' }
 ];
 
 const PEEK_RATIO = 0.075;
@@ -24,7 +24,6 @@ export function StageCarousel({ children }: { children: React.ReactNode }) {
   const [isDragging, setIsDragging] = useState(false);
   const scrollPositions = useRef<Record<string, number>>({});
 
-  // Update current index when location changes
   useEffect(() => {
     const index = STAGES.findIndex(stage => stage.path === location.pathname);
     if (index !== -1) {
@@ -32,13 +31,11 @@ export function StageCarousel({ children }: { children: React.ReactNode }) {
     }
   }, [location]);
 
-  // Save scroll position when leaving a view
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const target = e.target as HTMLDivElement;
     scrollPositions.current[location.pathname] = target.scrollTop;
   };
 
-  // Restore scroll position when entering a view
   useEffect(() => {
     const scrollContainer = document.querySelector('.stage-content');
     if (scrollContainer) {
@@ -55,7 +52,7 @@ export function StageCarousel({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const handleDragEnd = (e: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+  const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     setIsDragging(false);
     const threshold = bounds.width * PEEK_RATIO * 2;
     if (Math.abs(info.offset.x) > threshold) {
@@ -66,7 +63,6 @@ export function StageCarousel({ children }: { children: React.ReactNode }) {
   const mainCardWidth = bounds.width * MAIN_RATIO;
   const peekWidth = bounds.width * PEEK_RATIO;
 
-  // Don't show carousel for detail views
   if (location.pathname.includes('/recipe/')) {
     return <div className="flex-1 overflow-auto">{children}</div>;
   }
@@ -105,9 +101,8 @@ export function StageCarousel({ children }: { children: React.ReactNode }) {
           }}
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
         >
-          <AnimatePresence>
+          <AnimatePresence mode="wait">
             {STAGES.map((stage, index) => {
-              const Icon = stage.icon;
               const isActive = location.pathname === stage.path;
               return (
                 <motion.div

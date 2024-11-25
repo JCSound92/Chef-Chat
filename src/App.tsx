@@ -12,10 +12,14 @@ import { CurrentMeal } from './components/CurrentMeal';
 import { CookingModePage } from './pages/CookingModePage';
 import { Toast } from './components/Toast';
 import { Onboarding } from './components/Onboarding';
+import { useStore } from './store';
 
 // Wrapper component to conditionally render ChatControl
 function AppContent() {
   const location = useLocation();
+  const { chatMode } = useStore();
+  
+  // Don't show chat on home page
   const showChat = location.pathname !== '/';
 
   return (

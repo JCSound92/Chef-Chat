@@ -26,11 +26,13 @@ export function ChatControl(): JSX.Element {
     filterRecipes,
     chatMode,
     addChatMessage,
+    searchMode,
     lastRecipeRequest
   } = useStore();
 
   const isSearchView = location.pathname === '/recent' || location.pathname === '/saved';
   const isCookingMode = isCooking || location.pathname === '/cooking';
+  const isSearchMode = location.pathname === '/search';
 
   const debouncedSearch = useCallback(
     debounce((value: string) => {
@@ -47,44 +49,7 @@ export function ChatControl(): JSX.Element {
     }
   };
 
-  const getPlaceholder = () => {
-    if (isLoading) {
-      if (chatMode || isCookingMode) {
-        return "Asking Oh Sure Chef...";
-      }
-      return "Finding recipes...";
-    }
-
-    if (chatMode) {
-      return "Ask any cooking question...";
-    }
-
-    if (location.pathname === '/recent') {
-      return "Search your recent recipes...";
-    }
-    if (location.pathname === '/saved') {
-      return "Search your saved recipes...";
-    }
-
-    if (isCookingMode) {
-      return "Ask about timing, temperature, techniques, or substitutions...";
-    }
-
-    if (currentRecipe) {
-      return "Try 'adjust for 4 people' or ask about ingredients...";
-    }
-
-    if (location.pathname === '/current-meal') {
-      if (currentMeal.recipes.length > 0) {
-        return "Try 'adjust meal for 6 people' or ask about prep...";
-      }
-      return "What would you like to cook tonight?";
-    }
-
-    return "What do you want to cook tonight?";
-  };
-
-  const handleServingAdjustment = (command: string) => {
+  const handleServingAdjustment = (command: string): boolean => {
     const servingMatch = command.match(/(?:adjust|make|scale).*?(\d+)\s*(?:people|servings)/i);
     if (servingMatch) {
       const newServings = parseInt(servingMatch[1], 10);
@@ -143,8 +108,15 @@ export function ChatControl(): JSX.Element {
         } else {
           throw new Error('No response received');
         }
-      } else {
-        const recipes = await suggestRecipes(query);
+      } else if (isSearchMode || searchMode) {
+        // Handle recipe search based on mode
+        const contextQuery = searchMode === 'ingredients' 
+          ? `Find recipes using these ingredients: ${query}`
+          : searchMode === 'plan'
+          ? `Suggest recipes for a meal including: ${query}`
+          : query;
+
+        const recipes = await suggestRecipes(contextQuery, currentMeal.recipes);
         if (recipes && recipes.length > 0) {
           setSuggestions(recipes, query);
           setCurrentRecipe(null);
@@ -162,6 +134,53 @@ export function ChatControl(): JSX.Element {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const getPlaceholder = () => {
+    if (isLoading) {
+      if (chatMode || isCookingMode) {
+        return "Asking Oh Sure Chef...";
+      }
+      return "Finding recipes...";
+    }
+
+    if (chatMode) {
+      return "Ask any cooking question...";
+    }
+
+    if (location.pathname === '/recent') {
+      return "Search your recent recipes...";
+    }
+    if (location.pathname === '/saved') {
+      return "Search your saved recipes...";
+    }
+
+    if (isCookingMode) {
+      return "Ask about timing, temperature, techniques, or substitutions...";
+    }
+
+    if (currentRecipe) {
+      return "Try 'adjust for 4 people' or ask about ingredients...";
+    }
+
+    if (location.pathname === '/current-meal') {
+      if (currentMeal.recipes.length > 0) {
+        return "Try 'adjust meal for 6 people' or ask about prep...";
+      }
+      return "What would you like to cook tonight?";
+    }
+
+    if (searchMode === 'plan') {
+      return "What kind of meal would you like to plan?";
+    }
+    if (searchMode === 'ingredients') {
+      return "What ingredients do you have?";
+    }
+    if (searchMode === 'recipe') {
+      return "What recipe are you looking for?";
+    }
+
+    return "What can I help you with?";
   };
 
   return (
