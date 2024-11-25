@@ -2,22 +2,30 @@ import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChefHat } from 'lucide-react';
 import { useStore } from '../store';
+import { useLocation } from 'react-router-dom';
+import type { ChatMessage } from '../types';
 
 export function ChatHistory() {
-  const { chatHistory } = useStore();
+  const { chatContexts } = useStore();
+  const location = useLocation();
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Only show chat history in chat view
+  const messages = location.pathname === '/chat' 
+    ? chatContexts.chef 
+    : [];
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatHistory]);
+  }, [messages]);
 
-  if (!chatHistory.length) return null;
+  if (!messages.length) return null;
 
   return (
     <div className="flex-1 overflow-y-auto px-4 py-6">
       <div className="max-w-3xl mx-auto space-y-4">
         <AnimatePresence initial={false}>
-          {chatHistory.map((message) => (
+          {messages.map((message: ChatMessage) => (
             <motion.div
               key={message.id}
               initial={{ opacity: 0, y: 20 }}

@@ -1,3 +1,5 @@
+import { ParsedIngredient } from './utils/ingredientParser';
+
 export interface Recipe {
   id: string;
   title: string;
@@ -75,7 +77,10 @@ export interface AppState {
   shoppingList: ShoppingListItem[];
   isLoading: boolean;
   chatMode: boolean;
-  chatHistory: ChatMessage[];
+  chatContexts: {
+    chef: ChatMessage[];
+    cooking: ChatMessage | null;
+  };
   lastRecipeRequest: string;
   currentMeal: CurrentMeal;
   onboarding: OnboardingState;
@@ -104,12 +109,12 @@ export interface AppState {
   setShowRecipePanel: (show: boolean) => void;
   filterRecipes: (query: string) => void;
   setChatMode: (mode: boolean) => void;
-  addChatMessage: (message: string, type: 'user' | 'chef') => void;
-  clearChatHistory: () => void;
+  addChatMessage: (message: string, type: 'user' | 'chef', context?: 'chef' | 'cooking') => void;
+  clearChatHistory: (context?: 'chef' | 'cooking' | 'all') => void;
   clearSearch: () => void;
   markOnboardingComplete: () => void;
   completeOnboardingStep: (step: keyof OnboardingState['steps']) => void;
-  startTimer: (minutes: number) => void;
+  startTimer: (seconds: number) => void;
   stopTimer: () => void;
   decrementTimer: () => void;
   setVoiceState: (state: Partial<VoiceState>) => void;

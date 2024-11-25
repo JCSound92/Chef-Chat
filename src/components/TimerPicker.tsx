@@ -16,7 +16,6 @@ function ScrollPicker({ values, value, onChange, label, itemHeight }: ScrollPick
   const [isScrolling, setIsScrolling] = useState(false);
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
-  // Snap to closest value when scrolling stops
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -56,7 +55,6 @@ function ScrollPicker({ values, value, onChange, label, itemHeight }: ScrollPick
     };
   }, [value, values, onChange, itemHeight, isDragging]);
 
-  // Handle mouse wheel events
   const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
     if (isScrolling) return;
 
@@ -66,14 +64,12 @@ function ScrollPicker({ values, value, onChange, label, itemHeight }: ScrollPick
     const newIndex = Math.min(Math.max(0, currentIndex + delta), values.length - 1);
     onChange(values[newIndex]);
 
-    // Smooth scroll to new position
     containerRef.current?.scrollTo({
       top: newIndex * itemHeight,
       behavior: 'smooth'
     });
   };
 
-  // Initial scroll to value
   useEffect(() => {
     const index = values.indexOf(value);
     containerRef.current?.scrollTo({
@@ -86,7 +82,6 @@ function ScrollPicker({ values, value, onChange, label, itemHeight }: ScrollPick
     <div className="flex flex-col items-center">
       <div className="text-xs text-gray-500 mb-1">{label}</div>
       <div className="relative w-16">
-        {/* Selection highlight */}
         <div className="absolute inset-0 pointer-events-none">
           <div style={{ height: itemHeight * 2 }} />
           <div 
@@ -95,7 +90,6 @@ function ScrollPicker({ values, value, onChange, label, itemHeight }: ScrollPick
           />
         </div>
 
-        {/* Scroll container */}
         <div
           ref={containerRef}
           onMouseDown={() => setIsDragging(true)}

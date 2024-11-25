@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { AppState, Recipe, ShoppingListItem, MealPlan, VoiceState } from './types';
+import { AppState, Recipe, ShoppingListItem, MealPlan, VoiceState, ChatMessage } from './types';
 import { parseIngredient, formatIngredient, consolidateIngredients } from './utils/ingredientParser';
 
 const MAX_CHAT_HISTORY = 100;
@@ -8,6 +8,11 @@ const MAX_CHAT_HISTORY = 100;
 const createSearchIndex = (recipe: Recipe): string => 
   `${recipe.title} ${recipe.description || ''} ${recipe.cuisine || ''} ${
     recipe.type || ''} ${recipe.ingredients.join(' ')}`.toLowerCase();
+
+interface ChatContexts {
+  chef: ChatMessage[];
+  cooking: ChatMessage | null;
+}
 
 export const useStore = create<AppState>()(
   persist(
@@ -28,7 +33,10 @@ export const useStore = create<AppState>()(
       shoppingList: [],
       isLoading: false,
       chatMode: false,
-      chatHistory: [],
+      chatContexts: {
+        chef: [],
+        cooking: null
+      } as ChatContexts,
       lastRecipeRequest: '',
       currentMeal: {
         recipes: [],
@@ -65,19 +73,43 @@ export const useStore = create<AppState>()(
       setSearchMode: (mode) => set({ searchMode: mode }),
       setChatMode: (mode) => set({ chatMode: mode }),
       
-      addChatMessage: (message, type) => set((state) => ({
-        chatHistory: [
-          ...state.chatHistory.slice(-MAX_CHAT_HISTORY),
-          {
+      addChatMessage: (message: string, type: 'user' | 'chef', context: 'chef' | 'cooking' = 'chef') => 
+        set((state) => {
+          const newMessage = {
             id: `${Date.now()}-${Math.random()}`,
             message,
             type,
             timestamp: new Date()
-          }
-        ]
-      })),
+          };
 
-      clearChatHistory: () => set({ chatHistory: [] }),
+          if (context === 'cooking') {
+            return {
+              chatContexts: {
+                ...state.chatContexts,
+                cooking: newMessage
+              }
+            };
+          }
+
+          return {
+            chatContexts: {
+              ...state.chatContexts,
+              chef: [
+                ...state.chatContexts.chef.slice(-MAX_CHAT_HISTORY),
+                newMessage
+              ]
+            }
+          };
+        }),
+
+      clearChatHistory: (context: 'chef' | 'cooking' | 'all' = 'all') => set((state) => ({
+        chatContexts: context === 'all' 
+          ? { chef: [], cooking: null }
+          : {
+              ...state.chatContexts,
+              [context]: context === 'cooking' ? null : []
+            }
+      })),
 
       clearSearch: () => set({ 
         suggestions: [], 
@@ -252,9 +284,9 @@ export const useStore = create<AppState>()(
         }
       })),
 
-      startTimer: (minutes) => set({
+      startTimer: (seconds: number) => set({
         isTimerActive: true,
-        timerSeconds: minutes * 60
+        timerSeconds: seconds
       }),
 
       stopTimer: () => set({
@@ -266,8 +298,7 @@ export const useStore = create<AppState>()(
         timerSeconds: Math.max(0, state.timerSeconds - 1)
       })),
 
-      // New actions for voice control
-      setVoiceState: (newState) => set((state) => ({
+      setVoiceState: (newState: Partial<VoiceState>) => set((state) => ({
         voiceState: { ...state.voiceState, ...newState }
       })),
 
@@ -282,7 +313,6 @@ export const useStore = create<AppState>()(
         currentStep: Math.max(0, state.currentStep - 1)
       })),
 
-      // New actions for meal plans
       createMealPlan: (name) => set((state) => ({
         mealPlans: [
           ...state.mealPlans,
@@ -344,10 +374,10 @@ export const useStore = create<AppState>()(
         currentMeal: state.currentMeal,
         onboarding: state.onboarding,
         chatMode: state.chatMode,
+        chatContexts: state.chatContexts,
         lastSearch: state.lastSearch,
         suggestions: state.suggestions,
         searchMode: state.searchMode,
-        chatHistory: state.chatHistory,
         mealPlans: state.mealPlans
       })
     }
