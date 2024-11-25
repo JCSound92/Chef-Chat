@@ -7,9 +7,8 @@ import toast from 'react-hot-toast';
 import { debounce } from '../utils/debounce';
 import { CookingCoachResponse } from './CookingCoachResponse';
 
-export function ChatControl(): JSX.Element {
+export function ChatControl() {
   const [input, setInput] = useState('');
-  const [cookingResponse, setCookingResponse] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
   
@@ -26,13 +25,24 @@ export function ChatControl(): JSX.Element {
     filterRecipes,
     chatMode,
     addChatMessage,
+    lastRecipeRequest,
     searchMode,
-    lastRecipeRequest
+    clearChatHistory,
+    chatContexts
   } = useStore();
 
   const isSearchView = location.pathname === '/recent' || location.pathname === '/saved';
-  const isCookingMode = isCooking || location.pathname === '/cooking';
   const isSearchMode = location.pathname === '/search';
+  const isChefMode = chatMode && location.pathname === '/chat';
+  const isCookingMode = isCooking || location.pathname === '/cooking';
+  const isMealPlanMode = location.pathname === '/current-meal';
+
+  // Clear cooking chat when leaving cooking mode
+  React.useEffect(() => {
+    if (!isCookingMode) {
+      clearChatHistory('cooking');
+    }
+  }, [isCookingMode, clearChatHistory]);
 
   const debouncedSearch = useCallback(
     debounce((value: string) => {
@@ -50,11 +60,11 @@ export function ChatControl(): JSX.Element {
   };
 
   const handleServingAdjustment = (command: string): boolean => {
-    const servingMatch = command.match(/(?:adjust|make|scale).*?(\d+)\s*(?:people|servings)/i);
+    const servingMatch = command.match(/(?:adjust|make|scale|serve|for)?.*?(\d+)\s*(?:people|servings|guests)?/i);
     if (servingMatch) {
       const newServings = parseInt(servingMatch[1], 10);
       if (newServings > 0 && newServings <= 100) {
-        if ((command.includes('meal') || location.pathname === '/current-meal') && currentMeal.recipes.length > 0) {
+        if (isMealPlanMode && currentMeal.recipes.length > 0) {
           adjustMealPortions(newServings);
           toast.success(`Adjusted meal for ${newServings} people`);
           return true;
@@ -82,34 +92,56 @@ export function ChatControl(): JSX.Element {
       return;
     }
 
-    if (chatMode || isCookingMode) {
-      addChatMessage(query, 'user');
-    }
-
-    if (handleServingAdjustment(query)) {
+    // Handle different chat contexts
+    if (isChefMode) {
+      addChatMessage(query, 'user', 'chef');
+      try {
+        setIsLoading(true);
+        const response = await getCookingAdvice(query, null);
+        if (response) {
+          addChatMessage(response, 'chef', 'chef');
+        }
+      } catch (error) {
+        console.error('API Error:', error);
+        toast.error('Sorry, I had trouble understanding that. Could you try asking in a different way?');
+      } finally {
+        setIsLoading(false);
+      }
       return;
     }
 
-    try {
-      setIsLoading(true);
+    if (isMealPlanMode) {
+      if (!handleServingAdjustment(query)) {
+        toast.error('Please enter the number of people to serve (e.g., "6 people" or just "6")');
+      }
+      return;
+    }
 
-      if (chatMode || isCookingMode) {
+    if (isCookingMode) {
+      addChatMessage(query, 'user', 'cooking');
+      try {
+        setIsLoading(true);
         const response = await getCookingAdvice(
-          query, 
-          isCookingMode ? currentRecipe || currentMeal.recipes[0] : null
+          query,
+          currentRecipe || currentMeal.recipes[0]
         );
-        
         if (response) {
-          if (isCookingMode) {
-            setCookingResponse(response);
-          } else {
-            addChatMessage(response, 'chef');
-          }
-        } else {
-          throw new Error('No response received');
+          addChatMessage(response, 'chef', 'cooking');
         }
-      } else if (isSearchMode || searchMode) {
-        // Handle recipe search based on mode
+      } catch (error) {
+        console.error('API Error:', error);
+        toast.error('Sorry, I had trouble with that. Could you try asking differently?');
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
+    if (isSearchMode || searchMode) {
+      try {
+        setIsLoading(true);
+        clearChatHistory('cooking');
+        
         const contextQuery = searchMode === 'ingredients' 
           ? `Find recipes using these ingredients: ${query}`
           : searchMode === 'plan'
@@ -123,28 +155,24 @@ export function ChatControl(): JSX.Element {
         } else {
           throw new Error('No recipes found');
         }
+      } catch (error) {
+        console.error('API Error:', error);
+        toast.error('No recipes found. Try different ingredients or keywords.');
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error('API Error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Something went wrong';
-      toast.error(errorMessage);
-      if (chatMode || isCookingMode) {
-        addChatMessage("Ope! Sorry about that. Could you try asking in a different way?", 'chef');
-      }
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const getPlaceholder = () => {
     if (isLoading) {
-      if (chatMode || isCookingMode) {
+      if (isChefMode || isCookingMode) {
         return "Asking Oh Sure Chef...";
       }
       return "Finding recipes...";
     }
 
-    if (chatMode) {
+    if (isChefMode) {
       return "Ask any cooking question...";
     }
 
@@ -163,11 +191,8 @@ export function ChatControl(): JSX.Element {
       return "Try 'adjust for 4 people' or ask about ingredients...";
     }
 
-    if (location.pathname === '/current-meal') {
-      if (currentMeal.recipes.length > 0) {
-        return "Try 'adjust meal for 6 people' or ask about prep...";
-      }
-      return "What would you like to cook tonight?";
+    if (isMealPlanMode) {
+      return "How many people are we serving?";
     }
 
     if (searchMode === 'plan') {
@@ -183,14 +208,16 @@ export function ChatControl(): JSX.Element {
     return "What can I help you with?";
   };
 
+  // Don't show chat on home page
+  if (location.pathname === '/') {
+    return null;
+  }
+
   return (
     <>
-      {cookingResponse && (
-        <CookingCoachResponse 
-          response={cookingResponse} 
-          onDismiss={() => setCookingResponse(null)} 
-        />
-      )}
+      {isCookingMode && <CookingCoachResponse response={''} onDismiss={function (): void {
+        throw new Error('Function not implemented.');
+      } } />}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 shadow-lg chat-input-container">
         <form onSubmit={handleSubmit} className="max-w-3xl mx-auto p-4">
           <div className="relative flex items-center gap-3">
