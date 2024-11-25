@@ -1,9 +1,10 @@
 [build]
-  command = "VITE_PERPLEXITY_API_KEY=dummy npm run build"
+  command = "npm run build"
   publish = "dist"
 
 [build.environment]
   NODE_VERSION = "20"
+  VITE_PERPLEXITY_API_KEY = "dummy"
 
 [[redirects]]
   from = "/api/*"
