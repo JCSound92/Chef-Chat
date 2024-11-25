@@ -1,5 +1,3 @@
-import { ParsedIngredient } from './utils/ingredientParser';
-
 export interface Recipe {
   id: string;
   title: string;
@@ -16,6 +14,25 @@ export interface Recipe {
   currentServings?: number;
 }
 
+export interface ChatMessage {
+  id: string;
+  message: string;
+  type: 'user' | 'chef';
+  timestamp: Date;
+  context: 'chef' | 'cooking';
+}
+
+export interface ChatContexts {
+  chef: ChatMessage[];
+  cooking: ChatMessage | null;
+}
+
+export interface CookingState {
+  isActive: boolean;
+  currentStepIndex: number;
+  currentRecipeIndex: number;
+}
+
 export interface CurrentMeal {
   recipes: Recipe[];
   status: 'building' | 'shopping' | 'cooking';
@@ -28,24 +45,6 @@ export interface ShoppingListItem {
   name: string;
   recipeId: string | null;
   completed: boolean;
-}
-
-export interface ChatMessage {
-  id: string;
-  message: string;
-  type: 'user' | 'chef';
-  timestamp: Date;
-}
-
-export interface OnboardingState {
-  hasCompletedOnboarding: boolean;
-  steps: {
-    search: boolean;
-    addToMeal: boolean;
-    adjustServings: boolean;
-    shoppingList: boolean;
-    cookingMode: boolean;
-  };
 }
 
 export interface VoiceState {
@@ -77,15 +76,12 @@ export interface AppState {
   shoppingList: ShoppingListItem[];
   isLoading: boolean;
   chatMode: boolean;
-  chatContexts: {
-    chef: ChatMessage[];
-    cooking: ChatMessage | null;
-  };
+  chatContexts: ChatContexts;
   lastRecipeRequest: string;
   currentMeal: CurrentMeal;
-  onboarding: OnboardingState;
   voiceState: VoiceState;
   mealPlans: MealPlan[];
+  cookingState: CookingState;
 
   // Actions
   setIsLoading: (loading: boolean) => void;
@@ -99,6 +95,9 @@ export interface AppState {
   removeFromCurrentMeal: (recipeId: string) => void;
   clearCurrentMeal: () => void;
   startCooking: () => void;
+  stopCooking: () => void;
+  setCurrentStep: (stepIndex: number) => void;
+  setCurrentRecipeIndex: (recipeIndex: number) => void;
   generateShoppingList: () => void;
   addToShoppingList: (items: string[], recipeId?: string | null) => void;
   removeFromShoppingList: (id: string) => void;
@@ -109,17 +108,13 @@ export interface AppState {
   setShowRecipePanel: (show: boolean) => void;
   filterRecipes: (query: string) => void;
   setChatMode: (mode: boolean) => void;
-  addChatMessage: (message: string, type: 'user' | 'chef', context?: 'chef' | 'cooking') => void;
-  clearChatHistory: (context?: 'chef' | 'cooking' | 'all') => void;
+  addChatMessage: (message: string, type: 'user' | 'chef', context: 'chef' | 'cooking') => void;
+  clearChatHistory: (context: 'chef' | 'cooking') => void;
   clearSearch: () => void;
-  markOnboardingComplete: () => void;
-  completeOnboardingStep: (step: keyof OnboardingState['steps']) => void;
   startTimer: (seconds: number) => void;
   stopTimer: () => void;
   decrementTimer: () => void;
   setVoiceState: (state: Partial<VoiceState>) => void;
-  nextStep: () => void;
-  previousStep: () => void;
   createMealPlan: (name: string) => void;
   deleteMealPlan: (id: string) => void;
   setCurrentMealPlan: (plan: MealPlan | null) => void;

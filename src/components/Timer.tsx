@@ -2,8 +2,8 @@ import React, { useEffect, useRef } from 'react';
 import { Timer as TimerIcon, X } from 'lucide-react';
 import { useStore } from '../store';
 
-// Use a reliable, short sound that works well on mobile
-const TIMER_SOUND_URL = 'https://assets.mixkit.co/active_storage/sfx/2472/2472-preview.mp3';
+// Use a classic timer bell sound
+const TIMER_SOUND_URL = 'https://assets.mixkit.co/active_storage/sfx/943/943-preview.mp3';
 
 export function Timer() {
   const { isTimerActive, timerSeconds, stopTimer, decrementTimer } = useStore();
@@ -40,7 +40,6 @@ export function Timer() {
 
     intervalRef.current = window.setInterval(() => {
       if (timerSeconds <= 0) {
-        stopTimer();
         if (audioRef.current) {
           // Play sound with error handling
           const playPromise = audioRef.current.play();
@@ -64,6 +63,10 @@ export function Timer() {
             icon: '/vite.svg'
           });
         }
+        // Don't stop the timer, just clear the interval
+        if (intervalRef.current) {
+          window.clearInterval(intervalRef.current);
+        }
       } else {
         decrementTimer();
       }
@@ -74,7 +77,7 @@ export function Timer() {
         window.clearInterval(intervalRef.current);
       }
     };
-  }, [isTimerActive, timerSeconds, stopTimer, decrementTimer]);
+  }, [isTimerActive, timerSeconds, decrementTimer]);
 
   useEffect(() => {
     if ('Notification' in window && Notification.permission === 'default') {
@@ -90,6 +93,7 @@ export function Timer() {
     stopTimer();
   };
 
+  // Show timer if active or if time is up and sound is playing
   if (!isTimerActive && !audioRef.current?.currentTime) return null;
 
   const formatTime = () => {
@@ -100,7 +104,7 @@ export function Timer() {
     if (hours > 0) {
       return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
     }
-    if (minutes > 0) {
+    if (minutes > 0 || timerSeconds === 0) {
       return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
     }
     return `${String(seconds).padStart(2, '0')} sec`;

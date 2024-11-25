@@ -1,19 +1,33 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import { AppState, Recipe, ShoppingListItem, MealPlan, VoiceState, ChatMessage } from './types';
-import { parseIngredient, formatIngredient, consolidateIngredients } from './utils/ingredientParser';
+import { persist } from 'zustand/middleware';
+import type { AppState, Recipe, ShoppingListItem, MealPlan, ChatMessage } from './types';
+import { consolidateIngredients, parseIngredient, formatIngredient } from './utils/ingredientParser';
 
-// Increase max chat history to store 30 days worth (assuming average 20 messages per day)
-const MAX_CHAT_HISTORY = 600;
+const MAX_CHAT_HISTORY = 100;
 
-interface ChatContexts {
-  chef: ChatMessage[];
-  cooking: ChatMessage | null;
-}
-
-const createSearchIndex = (recipe: Recipe): string => 
-  `${recipe.title} ${recipe.description || ''} ${recipe.cuisine || ''} ${
-    recipe.type || ''} ${recipe.ingredients.join(' ')}`.toLowerCase();
+// Migration function to handle state updates
+const migrate = (persistedState: any, version: number): AppState => {
+  if (version === 0) {
+    // Convert old chatHistory to new chatContexts format
+    const chatHistory = persistedState.chatHistory || [];
+    return {
+      ...persistedState,
+      chatContexts: {
+        chef: chatHistory.map((msg: any) => ({
+          ...msg,
+          context: 'chef'
+        })),
+        cooking: null
+      },
+      cookingState: {
+        isActive: false,
+        currentStepIndex: 0,
+        currentRecipeIndex: 0
+      }
+    };
+  }
+  return persistedState as AppState;
+};
 
 export const useStore = create<AppState>()(
   persist(
@@ -23,7 +37,7 @@ export const useStore = create<AppState>()(
       filteredRecipes: [],
       suggestions: [],
       lastSearch: '',
-      searchMode: 'recipe' as const,
+      searchMode: 'recipe',
       currentRecipe: null,
       currentStep: 0,
       isTimerActive: false,
@@ -37,7 +51,7 @@ export const useStore = create<AppState>()(
       chatContexts: {
         chef: [],
         cooking: null
-      } as ChatContexts,
+      },
       lastRecipeRequest: '',
       currentMeal: {
         recipes: [],
@@ -45,22 +59,17 @@ export const useStore = create<AppState>()(
         servings: 4,
         originalRecipes: []
       },
-      onboarding: {
-        hasCompletedOnboarding: false,
-        steps: {
-          search: false,
-          addToMeal: false,
-          adjustServings: false,
-          shoppingList: false,
-          cookingMode: false
-        }
-      },
       voiceState: {
         isListening: false,
         error: null,
         transcript: ''
       },
       mealPlans: [],
+      cookingState: {
+        isActive: false,
+        currentStepIndex: 0,
+        currentRecipeIndex: 0
+      },
 
       // Actions
       setIsLoading: (loading) => set({ isLoading: loading }),
@@ -74,42 +83,37 @@ export const useStore = create<AppState>()(
       setSearchMode: (mode) => set({ searchMode: mode }),
       setChatMode: (mode) => set({ chatMode: mode }),
       
-      addChatMessage: (message: string, type: 'user' | 'chef', context: 'chef' | 'cooking' = 'chef') => 
-        set((state) => {
-          const newMessage = {
-            id: `${Date.now()}-${Math.random()}`,
-            message,
-            type,
-            timestamp: new Date()
-          };
+      addChatMessage: (message, type, context) => set((state) => {
+        const newMessage = {
+          id: `${Date.now()}-${Math.random()}`,
+          message,
+          type,
+          timestamp: new Date(),
+          context
+        };
 
-          if (context === 'cooking') {
-            return {
-              chatContexts: {
-                ...state.chatContexts,
-                cooking: newMessage
-              }
-            };
-          }
-
+        if (context === 'cooking') {
           return {
             chatContexts: {
               ...state.chatContexts,
-              chef: [
-                ...state.chatContexts.chef.slice(-MAX_CHAT_HISTORY),
-                newMessage
-              ]
+              cooking: newMessage
             }
           };
-        }),
+        }
 
-      clearChatHistory: (context: 'chef' | 'cooking' | 'all' = 'all') => set((state) => ({
-        chatContexts: context === 'all' 
-          ? { chef: [], cooking: null }
-          : {
-              ...state.chatContexts,
-              [context]: context === 'cooking' ? null : []
-            }
+        return {
+          chatContexts: {
+            ...state.chatContexts,
+            chef: [...state.chatContexts.chef.slice(-MAX_CHAT_HISTORY), newMessage]
+          }
+        };
+      }),
+
+      clearChatHistory: (context) => set((state) => ({
+        chatContexts: {
+          ...state.chatContexts,
+          [context]: context === 'chef' ? [] : null
+        }
       })),
 
       clearSearch: () => set({ 
@@ -197,12 +201,34 @@ export const useStore = create<AppState>()(
         }
       })),
 
-      startCooking: () => set((state) => ({
-        currentMeal: {
-          ...state.currentMeal,
-          status: 'cooking'
-        },
-        isCooking: true
+      startCooking: () => set({
+        cookingState: {
+          isActive: true,
+          currentStepIndex: 0,
+          currentRecipeIndex: 0
+        }
+      }),
+
+      stopCooking: () => set({
+        cookingState: {
+          isActive: false,
+          currentStepIndex: 0,
+          currentRecipeIndex: 0
+        }
+      }),
+
+      setCurrentStep: (stepIndex) => set((state) => ({
+        cookingState: {
+          ...state.cookingState,
+          currentStepIndex: stepIndex
+        }
+      })),
+
+      setCurrentRecipeIndex: (recipeIndex) => set((state) => ({
+        cookingState: {
+          ...state.cookingState,
+          currentRecipeIndex: recipeIndex
+        }
       })),
 
       generateShoppingList: () => set((state) => {
@@ -262,30 +288,14 @@ export const useStore = create<AppState>()(
         const searchTerms = query.toLowerCase().split(' ');
         return {
           filteredRecipes: state.recipes.filter(recipe => {
-            const searchText = createSearchIndex(recipe);
+            const searchText = `${recipe.title} ${recipe.description || ''} ${recipe.cuisine || ''} ${
+              recipe.type || ''} ${recipe.ingredients.join(' ')}`.toLowerCase();
             return searchTerms.every(term => searchText.includes(term));
           })
         };
       }),
 
-      markOnboardingComplete: () => set((state) => ({
-        onboarding: {
-          ...state.onboarding,
-          hasCompletedOnboarding: true
-        }
-      })),
-
-      completeOnboardingStep: (step) => set((state) => ({
-        onboarding: {
-          ...state.onboarding,
-          steps: {
-            ...state.onboarding.steps,
-            [step]: true
-          }
-        }
-      })),
-
-      startTimer: (seconds: number) => set({
+      startTimer: (seconds) => set({
         isTimerActive: true,
         timerSeconds: seconds
       }),
@@ -299,19 +309,8 @@ export const useStore = create<AppState>()(
         timerSeconds: Math.max(0, state.timerSeconds - 1)
       })),
 
-      setVoiceState: (newState: Partial<VoiceState>) => set((state) => ({
+      setVoiceState: (newState) => set((state) => ({
         voiceState: { ...state.voiceState, ...newState }
-      })),
-
-      nextStep: () => set((state) => ({
-        currentStep: Math.min(
-          state.currentStep + 1,
-          (state.currentRecipe?.steps.length || 0) - 1
-        )
-      })),
-
-      previousStep: () => set((state) => ({
-        currentStep: Math.max(0, state.currentStep - 1)
       })),
 
       createMealPlan: (name) => set((state) => ({
@@ -369,20 +368,20 @@ export const useStore = create<AppState>()(
     }),
     {
       name: 'recipe-storage',
-      storage: createJSONStorage(() => localStorage),
+      version: 1, // Add version number
+      migrate, // Add migration function
       partialize: (state) => ({
         recipes: state.recipes,
         shoppingList: state.shoppingList,
         currentMeal: state.currentMeal,
-        onboarding: state.onboarding,
         chatMode: state.chatMode,
         lastSearch: state.lastSearch,
         suggestions: state.suggestions,
         searchMode: state.searchMode,
         chatContexts: state.chatContexts,
-        mealPlans: state.mealPlans
-      }),
-      version: 1
+        mealPlans: state.mealPlans,
+        cookingState: state.cookingState
+      })
     }
   )
 );

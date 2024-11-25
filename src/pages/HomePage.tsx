@@ -62,7 +62,7 @@ export function HomePage() {
         "Oh sure, what's up?"
       ];
       const randomMessage = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
-      addChatMessage(randomMessage, 'chef');
+      addChatMessage(randomMessage, 'chef', 'chef');
       navigate(mode.path);
     } else if (mode.searchMode) {
       setChatMode(false);

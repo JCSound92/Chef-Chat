@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChefHat, Search, ShoppingCart, BookmarkCheck, History, Utensils, Home } from 'lucide-react';
+import { ChefHat, Search, ShoppingCart, BookmarkCheck, History, Utensils, Home, CookingPot } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useStore } from '../store';
 
@@ -11,7 +11,8 @@ export function Navigation() {
     suggestions,
     setChatMode,
     clearChatHistory,
-    lastSearch
+    lastSearch,
+    cookingState
   } = useStore();
   
   const navigate = useNavigate();
@@ -31,7 +32,7 @@ export function Navigation() {
     e.preventDefault();
     setCurrentRecipe(null);
     setChatMode(false);
-    clearChatHistory();
+    clearChatHistory('chef');
     navigate('/');
   };
 
@@ -71,18 +72,28 @@ export function Navigation() {
             >
               <Search className="w-6 h-6" />
             </button>
-            <Link
-              to="/current-meal"
-              className="p-2 hover:bg-gray-100 rounded-lg relative"
-              title="Tonight's Meal"
-            >
-              <Utensils className="w-6 h-6 text-[#333333]" />
-              {currentMeal.recipes.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#e05f3e] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  {currentMeal.recipes.length}
-                </span>
-              )}
-            </Link>
+            {cookingState.isActive ? (
+              <Link
+                to="/cooking"
+                className="p-2 hover:bg-gray-100 rounded-lg"
+                title="Continue Cooking"
+              >
+                <CookingPot className="w-6 h-6 text-[#e05f3e] animate-pulse" />
+              </Link>
+            ) : (
+              <Link
+                to="/current-meal"
+                className="p-2 hover:bg-gray-100 rounded-lg relative"
+                title="Tonight's Meal"
+              >
+                <Utensils className="w-6 h-6 text-[#333333]" />
+                {currentMeal.recipes.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-[#e05f3e] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {currentMeal.recipes.length}
+                  </span>
+                )}
+              </Link>
+            )}
             <Link
               to="/recent"
               className="p-2 hover:bg-gray-100 rounded-lg"

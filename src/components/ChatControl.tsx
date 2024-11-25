@@ -12,6 +12,11 @@ export function ChatControl() {
   const inputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
   
+  // Don't show chat on home page or shopping list
+  if (location.pathname === '/' || location.pathname === '/shopping-list') {
+    return null;
+  }
+  
   const { 
     setIsLoading, 
     setSuggestions,
@@ -207,11 +212,6 @@ export function ChatControl() {
 
     return "What can I help you with?";
   };
-
-  // Don't show chat on home page
-  if (location.pathname === '/') {
-    return null;
-  }
 
   return (
     <>
