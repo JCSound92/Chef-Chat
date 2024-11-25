@@ -1,12 +1,13 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Search, Loader2, Send } from 'lucide-react';
 import { useStore } from '../store';
 import { suggestRecipes, getCookingAdvice } from '../api';
 import toast from 'react-hot-toast';
 import { CookingCoachResponse } from './CookingCoachResponse';
+import debounce from 'lodash/debounce';
 
-export function ChatControl() {
+export function ChatControl(): JSX.Element {
   const [input, setInput] = useState('');
   const [cookingResponse, setCookingResponse] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -30,9 +31,27 @@ export function ChatControl() {
   const isSearchView = location.pathname === '/recent' || location.pathname === '/saved';
   const isCookingMode = isCooking || location.pathname === '/cooking';
 
+  const debouncedSearch = useCallback(
+    debounce((value: string) => {
+      filterRecipes(value);
+    }, 150),
+    [filterRecipes]
+  );
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setInput(value);
+    if (isSearchView) {
+      debouncedSearch(value);
+    }
+  };
+
   const getPlaceholder = () => {
     if (isLoading) {
-      return chatMode ? "Asking Oh Sure Chef..." : "Finding recipes...";
+      if (chatMode || isCookingMode) {
+        return "Asking Oh Sure Chef...";
+      }
+      return "Finding recipes...";
     }
 
     if (chatMode) {
@@ -71,14 +90,6 @@ export function ChatControl() {
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setInput(value);
-    if (isSearchView) {
-      filterRecipes(value);
-    }
-  };
-
   const handleServingAdjustment = (command: string) => {
     const servingMatch = command.match(/(?:adjust|make|scale).*?(\d+)\s*(?:people|servings)/i);
     if (servingMatch) {
@@ -109,14 +120,11 @@ export function ChatControl() {
     setInput('');
 
     if (isSearchView) {
-      filterRecipes(query);
       return;
     }
 
-    if (chatMode) {
+    if (chatMode || isCookingMode) {
       addChatMessage(query, 'user');
-    } else if (isCookingMode) {
-      setCookingResponse(null);
     }
 
     if (handleServingAdjustment(query)) {
@@ -126,39 +134,19 @@ export function ChatControl() {
     try {
       setIsLoading(true);
 
-      if (isCookingMode) {
-        const activeRecipe = currentMeal.recipes[0] || currentRecipe;
-        if (!activeRecipe) {
-          throw new Error('No active recipe found');
-        }
-        const response = await getCookingAdvice(query, activeRecipe);
+      if (chatMode || isCookingMode) {
+        const response = await getCookingAdvice(query, currentRecipe);
         if (response) {
-          setCookingResponse(response);
-        } else {
-          throw new Error('No response received');
-        }
-      } else if (chatMode) {
-        const isAboutCurrentMeal = query.toLowerCase().includes('this meal') || 
-                                 query.toLowerCase().includes('my meal') ||
-                                 query.toLowerCase().includes('the meal');
-
-        const response = await getCookingAdvice(
-          query, 
-          isAboutCurrentMeal ? (currentMeal.recipes[0] || currentRecipe || null) : null
-        );
-        if (response) {
-          addChatMessage(response, 'chef');
+          if (isCookingMode) {
+            setCookingResponse(response);
+          } else {
+            addChatMessage(response, 'chef');
+          }
         } else {
           throw new Error('No response received');
         }
       } else {
-        let enhancedQuery = query;
-        if (currentMeal.recipes.length > 0) {
-          const mealTypes = currentMeal.recipes.map(r => r.type || 'main').join(', ');
-          enhancedQuery = `Suggest ${query} that would complement a meal with: ${mealTypes}`;
-        }
-        
-        const recipes = await suggestRecipes(enhancedQuery, currentMeal.recipes);
+        const recipes = await suggestRecipes(query, currentMeal.recipes);
         if (recipes && recipes.length > 0) {
           setSuggestions(recipes, query);
           setCurrentRecipe(null);
@@ -170,9 +158,7 @@ export function ChatControl() {
       console.error('API Error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Something went wrong';
       toast.error(errorMessage);
-      if (isCookingMode) {
-        setCookingResponse("Ope! Sorry about that. Could you try asking in a different way?");
-      } else if (chatMode) {
+      if (chatMode || isCookingMode) {
         addChatMessage("Ope! Sorry about that. Could you try asking in a different way?", 'chef');
       }
     } finally {
@@ -182,6 +168,12 @@ export function ChatControl() {
 
   return (
     <>
+      {cookingResponse && (
+        <CookingCoachResponse 
+          response={cookingResponse} 
+          onDismiss={() => setCookingResponse(null)} 
+        />
+      )}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 shadow-lg chat-input-container">
         <form onSubmit={handleSubmit} className="max-w-3xl mx-auto p-4">
           <div className="relative flex items-center gap-3">
@@ -209,13 +201,6 @@ export function ChatControl() {
           </div>
         </form>
       </div>
-      
-      {isCookingMode && cookingResponse && (
-        <CookingCoachResponse 
-          response={cookingResponse} 
-          onDismiss={() => setCookingResponse(null)} 
-        />
-      )}
       <div className="h-20" />
     </>
   );

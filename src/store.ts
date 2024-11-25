@@ -3,6 +3,10 @@ import { persist } from 'zustand/middleware';
 import { AppState, Recipe, ShoppingListItem } from './types';
 import { parseIngredient, formatIngredient, consolidateIngredients } from './utils/ingredientParser';
 
+const createSearchIndex = (recipe: Recipe): string => 
+  `${recipe.title} ${recipe.description || ''} ${recipe.cuisine || ''} ${
+    recipe.type || ''} ${recipe.ingredients.join(' ')}`.toLowerCase();
+
 export const useStore = create<AppState>()(
   persist(
     (set, get) => ({
@@ -10,7 +14,7 @@ export const useStore = create<AppState>()(
       filteredRecipes: [],
       suggestions: [],
       lastSearch: '',
-      searchMode: 'recipe',
+      searchMode: 'recipe' as const,
       currentRecipe: null,
       currentStep: 0,
       isTimerActive: false,
@@ -41,16 +45,16 @@ export const useStore = create<AppState>()(
 
       setIsLoading: (loading) => set({ isLoading: loading }),
       
-      setSuggestions: (recipes, searchQuery = '') => set((state) => ({ 
+      setSuggestions: (recipes, searchQuery = '') => set({ 
         suggestions: recipes,
-        lastSearch: searchQuery || state.lastSearch
-      })),
+        lastSearch: searchQuery || get().lastSearch
+      }),
       
       setSearchMode: (mode) => set({ searchMode: mode }),
 
       setChatMode: (mode) => set({ chatMode: mode }),
       
-      addChatMessage: (message: string, type: 'user' | 'chef') =>
+      addChatMessage: (message, type) =>
         set((state) => ({
           chatHistory: [
             ...state.chatHistory,
@@ -75,7 +79,7 @@ export const useStore = create<AppState>()(
           }
         })),
 
-      completeOnboardingStep: (step: keyof AppState['onboarding']['steps']) =>
+      completeOnboardingStep: (step) =>
         set((state) => ({
           onboarding: {
             ...state.onboarding,
@@ -86,16 +90,23 @@ export const useStore = create<AppState>()(
           }
         })),
 
-      filterRecipes: (query: string) => 
+      filterRecipes: (query) => 
         set((state) => {
           if (!query.trim()) {
             return { filteredRecipes: state.recipes };
           }
 
-          const searchTerms = query.toLowerCase().split(' ');
+          const searchTerms = query.toLowerCase().split(' ').filter(Boolean);
+          const searchIndices = new Map<string, string>();
+          
           const filtered = state.recipes.filter(recipe => {
-            const searchText = `${recipe.title} ${recipe.description || ''} ${recipe.cuisine || ''}`.toLowerCase();
-            return searchTerms.every(term => searchText.includes(term));
+            let searchIndex = searchIndices.get(recipe.id);
+            if (!searchIndex) {
+              searchIndex = createSearchIndex(recipe);
+              searchIndices.set(recipe.id, searchIndex);
+            }
+            
+            return searchTerms.every(term => searchIndex!.includes(term));
           });
 
           return { 
@@ -270,7 +281,7 @@ export const useStore = create<AppState>()(
           };
         }),
 
-      addToShoppingList: (items: string[], recipeId: string | null = null) =>
+      addToShoppingList: (items, recipeId = null) =>
         set((state) => {
           const consolidatedItems = consolidateIngredients(items);
           return {
@@ -286,12 +297,12 @@ export const useStore = create<AppState>()(
           };
         }),
 
-      removeFromShoppingList: (id: string) =>
+      removeFromShoppingList: (id) =>
         set((state) => ({
           shoppingList: state.shoppingList.filter((item) => item.id !== id),
         })),
 
-      toggleShoppingItem: (id: string) =>
+      toggleShoppingItem: (id) =>
         set((state) => ({
           shoppingList: state.shoppingList.map((item) =>
             item.id === id ? { ...item, completed: !item.completed } : item
@@ -306,7 +317,7 @@ export const useStore = create<AppState>()(
       clearShoppingList: () =>
         set({ shoppingList: [] }),
 
-      startTimer: (seconds: number) =>
+      startTimer: (seconds) =>
         set({
           isTimerActive: true,
           timerSeconds: seconds,
