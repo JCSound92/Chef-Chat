@@ -2,34 +2,59 @@ import React, { useEffect, useRef } from 'react';
 import { Timer as TimerIcon, X } from 'lucide-react';
 import { useStore } from '../store';
 
-const TIMER_SOUND_URL = 'https://assets.mixkit.co/sfx/preview/mixkit-morning-rooster-crowing-2462.mp3';
+// Use a reliable, short sound that works well on mobile
+const TIMER_SOUND_URL = 'https://assets.mixkit.co/active_storage/sfx/2472/2472-preview.mp3';
 
 export function Timer() {
   const { isTimerActive, timerSeconds, stopTimer, decrementTimer } = useStore();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const intervalRef = useRef<number | null>(null);
 
+  // Initialize audio on component mount
   useEffect(() => {
-    if (!isTimerActive) return;
-
-    // Initialize audio on first interaction
-    const initAudio = () => {
-      if (!audioRef.current) {
-        audioRef.current = new Audio(TIMER_SOUND_URL);
-        audioRef.current.load(); // Preload the audio
-        document.removeEventListener('click', initAudio);
+    audioRef.current = new Audio(TIMER_SOUND_URL);
+    audioRef.current.loop = true;
+    
+    // Preload the audio
+    const preloadAudio = () => {
+      if (audioRef.current) {
+        audioRef.current.load();
+        document.removeEventListener('click', preloadAudio);
       }
     };
-    document.addEventListener('click', initAudio);
+    
+    // Preload on first user interaction to handle mobile
+    document.addEventListener('click', preloadAudio);
+    
+    return () => {
+      document.removeEventListener('click', preloadAudio);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isTimerActive) return;
 
     intervalRef.current = window.setInterval(() => {
       if (timerSeconds <= 0) {
         stopTimer();
         if (audioRef.current) {
+          // Play sound with error handling
           const playPromise = audioRef.current.play();
           if (playPromise !== undefined) {
             playPromise.catch(error => {
               console.error('Audio playback failed:', error);
+              // Try playing again with user interaction
+              const playOnClick = () => {
+                if (audioRef.current) {
+                  audioRef.current.play().catch(console.error);
+                  document.removeEventListener('click', playOnClick);
+                }
+              };
+              document.addEventListener('click', playOnClick, { once: true });
             });
           }
         }
@@ -48,7 +73,6 @@ export function Timer() {
       if (intervalRef.current) {
         window.clearInterval(intervalRef.current);
       }
-      document.removeEventListener('click', initAudio);
     };
   }, [isTimerActive, timerSeconds, stopTimer, decrementTimer]);
 
@@ -56,15 +80,6 @@ export function Timer() {
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
     }
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-    };
   }, []);
 
   const handleStop = () => {
@@ -94,7 +109,7 @@ export function Timer() {
   return (
     <div className="fixed bottom-24 right-8 bg-white rounded-2xl shadow-xl p-4 animate-fade-in">
       <div className="flex items-center gap-3">
-        <TimerIcon className="w-5 h-5 text-[#FF6B6B] animate-pulse" />
+        <TimerIcon className={`w-5 h-5 text-[#FF6B6B] ${timerSeconds === 0 ? 'animate-pulse' : ''}`} />
         <span className="text-xl font-semibold">{formatTime()}</span>
         <button
           onClick={handleStop}

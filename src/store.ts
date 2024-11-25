@@ -1,18 +1,19 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { AppState, Recipe, ShoppingListItem, MealPlan, VoiceState, ChatMessage } from './types';
 import { parseIngredient, formatIngredient, consolidateIngredients } from './utils/ingredientParser';
 
-const MAX_CHAT_HISTORY = 100;
-
-const createSearchIndex = (recipe: Recipe): string => 
-  `${recipe.title} ${recipe.description || ''} ${recipe.cuisine || ''} ${
-    recipe.type || ''} ${recipe.ingredients.join(' ')}`.toLowerCase();
+// Increase max chat history to store 30 days worth (assuming average 20 messages per day)
+const MAX_CHAT_HISTORY = 600;
 
 interface ChatContexts {
   chef: ChatMessage[];
   cooking: ChatMessage | null;
 }
+
+const createSearchIndex = (recipe: Recipe): string => 
+  `${recipe.title} ${recipe.description || ''} ${recipe.cuisine || ''} ${
+    recipe.type || ''} ${recipe.ingredients.join(' ')}`.toLowerCase();
 
 export const useStore = create<AppState>()(
   persist(
@@ -368,18 +369,20 @@ export const useStore = create<AppState>()(
     }),
     {
       name: 'recipe-storage',
+      storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         recipes: state.recipes,
         shoppingList: state.shoppingList,
         currentMeal: state.currentMeal,
         onboarding: state.onboarding,
         chatMode: state.chatMode,
-        chatContexts: state.chatContexts,
         lastSearch: state.lastSearch,
         suggestions: state.suggestions,
         searchMode: state.searchMode,
+        chatContexts: state.chatContexts,
         mealPlans: state.mealPlans
-      })
+      }),
+      version: 1
     }
   )
 );
