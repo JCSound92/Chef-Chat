@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Timer as TimerIcon, X } from 'lucide-react';
 import { useStore } from '../store';
 

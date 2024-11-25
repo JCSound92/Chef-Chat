@@ -1,10 +1,10 @@
-import { useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Search, Loader2, Send } from 'lucide-react';
 import { useStore } from '../store';
 import { suggestRecipes, getCookingAdvice } from '../api';
-import { CookingCoachResponse } from './CookingCoachResponse';
 import toast from 'react-hot-toast';
+import { CookingCoachResponse } from './CookingCoachResponse';
 
 export function ChatControl() {
   const [input, setInput] = useState('');
