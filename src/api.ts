@@ -65,7 +65,6 @@ async function fetchWithRetry(
     const fetchOptions: RequestInit = {
       ...options,
       headers: {
-        ...options.headers,
         ...headers
       }
     };
