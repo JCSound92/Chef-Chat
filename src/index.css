@@ -20,10 +20,16 @@
     height: 100vh;
     height: var(--app-height);
     overflow: hidden;
+    /* Prevent content shift on iOS */
+    position: fixed;
+    width: 100%;
+    -webkit-overflow-scrolling: touch;
   }
 
   #root {
     @apply h-full;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 }
 
@@ -55,6 +61,7 @@
     padding-top: 4rem;
     padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
     height: 100%;
+    -webkit-overflow-scrolling: touch;
   }
 
   /* Center content for specific views */
@@ -90,11 +97,13 @@
   @apply fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 shadow-lg z-50;
   padding-bottom: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom));
   transform: translateZ(0);
+  transition: transform 0.3s ease-out;
+  will-change: transform;
 }
 
 /* iOS specific styles */
 @supports (-webkit-touch-callout: none) {
   .chat-input-container {
-    bottom: var(--keyboard-height, 0px);
+    transform: translate3d(0, var(--keyboard-height, 0), 0);
   }
 }

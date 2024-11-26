@@ -36,13 +36,20 @@ function AppContent() {
     if (/iPad|iPhone|iPod/.test(navigator.platform)) {
       if ('visualViewport' in window && window.visualViewport) {
         const viewport = window.visualViewport;
+        let lastHeight = viewport.height;
+        
         const handler = () => {
-          const offsetHeight = window.innerHeight - viewport.height;
-          document.documentElement.style.setProperty(
-            '--keyboard-height',
-            `${offsetHeight}px`
-          );
+          // Only update if height actually changed (keyboard state changed)
+          if (viewport.height !== lastHeight) {
+            lastHeight = viewport.height;
+            const offsetHeight = window.innerHeight - viewport.height;
+            document.documentElement.style.setProperty(
+              '--keyboard-height',
+              `${offsetHeight}px`
+            );
+          }
         };
+
         viewport.addEventListener('resize', handler);
         viewport.addEventListener('scroll', handler);
         return () => {
