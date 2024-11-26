@@ -12,7 +12,7 @@ import { CurrentMeal } from './components/CurrentMeal';
 import { CookingModePage } from './pages/CookingModePage';
 import { Toast } from './components/Toast';
 
-// Handle mobile viewport height
+// Handle mobile viewport height and keyboard
 function setAppHeight() {
   const vh = window.innerHeight * 0.01;
   document.documentElement.style.setProperty('--vh', `${vh}px`);
@@ -34,6 +34,19 @@ function AppContent() {
       // Small delay to ensure new dimensions are available
       setTimeout(setAppHeight, 100);
     });
+
+    // Handle iOS keyboard
+    if (/iPad|iPhone|iPod/.test(navigator.platform)) {
+      const visualViewport = window.visualViewport;
+      if (visualViewport) {
+        const resizeHandler = () => {
+          const keyboardHeight = Math.max(0, window.innerHeight - visualViewport.height);
+          document.documentElement.style.setProperty('--keyboard-height', `${keyboardHeight}px`);
+        };
+        visualViewport.addEventListener('resize', resizeHandler);
+        return () => visualViewport.removeEventListener('resize', resizeHandler);
+      }
+    }
 
     // Cleanup
     return () => {

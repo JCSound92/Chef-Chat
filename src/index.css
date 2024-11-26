@@ -8,6 +8,7 @@
   :root {
     --app-height: 100%;
     --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+    --keyboard-height: 0px;
   }
 
   html {
@@ -48,6 +49,7 @@
   .app-header {
     @apply fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-lg shadow-sm z-50;
     height: theme('spacing.16');
+    transform: translateZ(0); /* Force GPU acceleration */
   }
 
   .app-content {
@@ -55,6 +57,7 @@
     height: calc(100% - theme('spacing.16') - var(--safe-area-inset-bottom));
     padding-top: theme('spacing.16');
     padding-bottom: calc(theme('spacing.20') + var(--safe-area-inset-bottom));
+    transform: translateZ(0); /* Force GPU acceleration */
   }
 
   /* Center content for specific views */
@@ -89,6 +92,7 @@
 .chat-container {
   @apply fixed inset-0 flex flex-col;
   padding-bottom: var(--safe-area-inset-bottom);
+  transform: translateZ(0); /* Force GPU acceleration */
 }
 
 .chat-messages {
@@ -103,5 +107,19 @@
   left: 0;
   right: 0;
   z-index: 50;
-  padding-bottom: var(--safe-area-inset-bottom);
+  padding-bottom: calc(var(--safe-area-inset-bottom));
+  transform: translateZ(0); /* Force GPU acceleration */
+}
+
+/* iOS specific styles */
+@supports (-webkit-touch-callout: none) {
+  .app-header {
+    position: sticky;
+    top: 0;
+  }
+
+  .chat-input-container {
+    position: sticky;
+    bottom: 0;
+  }
 }
