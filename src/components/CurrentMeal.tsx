@@ -99,8 +99,8 @@ export function CurrentMeal() {
   };
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-shrink-0 border-b border-gray-100 bg-white px-8 py-4">
+    <div className="page-container">
+      <div className="page-header">
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-4">
             <h1 className="text-2xl font-bold">Tonight's Meal</h1>
@@ -135,8 +135,8 @@ export function CurrentMeal() {
         </div>
       </div>
 
-      <div className="content-container">
-        <div className="max-w-3xl mx-auto py-6">
+      <div className="flex-1 p-8">
+        <div className="max-w-3xl mx-auto">
           {currentMeal.recipes.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-xl">
               <p className="text-gray-500">No recipes added yet</p>
