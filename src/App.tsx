@@ -14,8 +14,9 @@ import { Toast } from './components/Toast';
 
 // Handle mobile viewport height
 function setAppHeight() {
-  const doc = document.documentElement;
-  doc.style.setProperty('--app-height', `${window.innerHeight}px`);
+  const vh = window.innerHeight * 0.01;
+  document.documentElement.style.setProperty('--vh', `${vh}px`);
+  document.documentElement.style.setProperty('--app-height', `${window.innerHeight}px`);
 }
 
 // Wrapper component to conditionally render ChatControl
@@ -29,7 +30,10 @@ function AppContent() {
 
     // Update height on resize and orientation change
     window.addEventListener('resize', setAppHeight);
-    window.addEventListener('orientationchange', setAppHeight);
+    window.addEventListener('orientationchange', () => {
+      // Small delay to ensure new dimensions are available
+      setTimeout(setAppHeight, 100);
+    });
 
     // Cleanup
     return () => {
@@ -39,9 +43,11 @@ function AppContent() {
   }, []);
 
   return (
-    <div className="h-full flex flex-col bg-gray-50 overflow-hidden">
-      <Navigation />
-      <main className="flex-1 flex flex-col mt-16 relative overflow-hidden">
+    <div className="h-full flex flex-col bg-gray-50">
+      <header className="app-header">
+        <Navigation />
+      </header>
+      <main className="app-content">
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/search" element={<SearchPage />} />

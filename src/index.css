@@ -7,15 +7,16 @@
 @layer base {
   :root {
     --app-height: 100%;
+    --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
   }
 
-  html, body {
+  html {
     @apply h-full overflow-hidden overscroll-none;
     height: var(--app-height);
   }
 
   body {
-    @apply antialiased text-[#333333] bg-[#F8F8F8];
+    @apply antialiased text-[#333333] bg-[#F8F8F8] h-full overflow-hidden;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, 
                  Helvetica, Arial, sans-serif, "Apple Color Emoji", 
                  "Segoe UI Emoji", "Segoe UI Symbol";
@@ -44,36 +45,21 @@
     @apply bg-white rounded-2xl shadow-xl shadow-gray-100/50 p-8;
   }
 
-  .content-container {
-    @apply flex-1 overflow-y-auto px-4 md:px-8;
-    height: calc(100% - theme('spacing.16')); /* Account for header height */
-    scroll-behavior: smooth;
+  .app-header {
+    @apply fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-lg shadow-sm z-50;
+    height: theme('spacing.16');
+  }
+
+  .app-content {
+    @apply flex-1 overflow-y-auto;
+    height: calc(100% - theme('spacing.16') - var(--safe-area-inset-bottom));
+    padding-top: theme('spacing.16');
+    padding-bottom: calc(theme('spacing.20') + var(--safe-area-inset-bottom));
   }
 
   /* Center content for specific views */
   .home-container, .cooking-container {
     @apply flex items-center justify-center min-h-full;
-  }
-
-  /* Mobile-friendly chat container */
-  .chat-container {
-    @apply fixed inset-0 flex flex-col;
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-
-  .chat-messages {
-    @apply flex-1 overflow-y-auto;
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-
-  .chat-input-container {
-    @apply bg-white border-t border-gray-100 shadow-lg;
-    padding-bottom: env(safe-area-inset-bottom);
-    position: sticky;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: 50;
   }
 }
 
@@ -97,4 +83,25 @@
     -ms-overflow-style: none;  /* IE and Edge */
     scrollbar-width: none;  /* Firefox */
   }
+}
+
+/* Mobile-friendly chat container */
+.chat-container {
+  @apply fixed inset-0 flex flex-col;
+  padding-bottom: var(--safe-area-inset-bottom);
+}
+
+.chat-messages {
+  @apply flex-1 overflow-y-auto;
+  padding-bottom: var(--safe-area-inset-bottom);
+}
+
+.chat-input-container {
+  @apply bg-white border-t border-gray-100 shadow-lg;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  padding-bottom: var(--safe-area-inset-bottom);
 }
