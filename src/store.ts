@@ -4,11 +4,10 @@ import type { AppState, Recipe, ShoppingListItem, MealPlan, ChatMessage } from '
 import { consolidateIngredients, parseIngredient, formatIngredient } from './utils/ingredientParser';
 
 const MAX_CHAT_HISTORY = 100;
+const MAX_RECENT_RECIPES = 20;
 
-// Migration function to handle state updates
 const migrate = (persistedState: any, version: number): AppState => {
   if (version === 0) {
-    // Convert old chatHistory to new chatContexts format
     const chatHistory = persistedState.chatHistory || [];
     return {
       ...persistedState,
@@ -74,11 +73,21 @@ export const useStore = create<AppState>()(
       // Actions
       setIsLoading: (loading) => set({ isLoading: loading }),
       
-      setSuggestions: (recipes, searchQuery = '', append = false) => set((state) => ({ 
-        suggestions: append ? [...state.suggestions, ...recipes] : recipes,
-        lastSearch: searchQuery || state.lastSearch,
-        lastRecipeRequest: searchQuery || state.lastRecipeRequest
-      })),
+      setSuggestions: (recipes, searchQuery = '', append = false) => {
+        set((state) => {
+          // Add recipes to recent list when they're suggested
+          const existingIds = new Set(state.recipes.map(r => r.id));
+          const newRecipes = recipes.filter(r => !existingIds.has(r.id));
+          
+          return {
+            suggestions: append ? [...state.suggestions, ...recipes] : recipes,
+            lastSearch: searchQuery || state.lastSearch,
+            lastRecipeRequest: searchQuery || state.lastRecipeRequest,
+            // Add new recipes to the recent list
+            recipes: [...newRecipes, ...state.recipes].slice(0, MAX_RECENT_RECIPES)
+          };
+        });
+      },
       
       setSearchMode: (mode) => set({ searchMode: mode }),
       setChatMode: (mode) => set({ chatMode: mode }),
@@ -122,12 +131,39 @@ export const useStore = create<AppState>()(
         lastRecipeRequest: ''
       }),
 
-      setCurrentRecipe: (recipe) => set({ currentRecipe: recipe }),
+      setCurrentRecipe: (recipe) => {
+        if (recipe) {
+          set((state) => {
+            // Add to recent recipes if not already present
+            const existingIndex = state.recipes.findIndex(r => r.id === recipe.id);
+            const updatedRecipes = [...state.recipes];
+            
+            if (existingIndex !== -1) {
+              // Move to top if already exists
+              updatedRecipes.splice(existingIndex, 1);
+            }
+            updatedRecipes.unshift(recipe);
+            
+            return {
+              currentRecipe: recipe,
+              recipes: updatedRecipes.slice(0, MAX_RECENT_RECIPES)
+            };
+          });
+        } else {
+          set({ currentRecipe: null });
+        }
+      },
 
       toggleFavorite: (recipeId) => set((state) => ({
         recipes: state.recipes.map(r => 
           r.id === recipeId ? { ...r, favorite: !r.favorite } : r
-        )
+        ),
+        suggestions: state.suggestions.map(r =>
+          r.id === recipeId ? { ...r, favorite: !r.favorite } : r
+        ),
+        currentRecipe: state.currentRecipe?.id === recipeId
+          ? { ...state.currentRecipe, favorite: !state.currentRecipe.favorite }
+          : state.currentRecipe
       })),
 
       adjustPortions: (servings) => set((state) => {
@@ -175,16 +211,30 @@ export const useStore = create<AppState>()(
         };
       }),
 
-      addToCurrentMeal: (recipe) => set((state) => ({
-        currentMeal: {
-          ...state.currentMeal,
-          recipes: [...state.currentMeal.recipes, {
-            ...recipe,
-            originalIngredients: [...recipe.ingredients],
-            currentServings: state.currentMeal.servings
-          }]
-        }
-      })),
+      addToCurrentMeal: (recipe) => {
+        set((state) => {
+          // Add to recent recipes when adding to meal
+          const existingIndex = state.recipes.findIndex(r => r.id === recipe.id);
+          const updatedRecipes = [...state.recipes];
+          
+          if (existingIndex !== -1) {
+            updatedRecipes.splice(existingIndex, 1);
+          }
+          updatedRecipes.unshift(recipe);
+          
+          return {
+            currentMeal: {
+              ...state.currentMeal,
+              recipes: [...state.currentMeal.recipes, {
+                ...recipe,
+                originalIngredients: [...recipe.ingredients],
+                currentServings: state.currentMeal.servings
+              }]
+            },
+            recipes: updatedRecipes.slice(0, MAX_RECENT_RECIPES)
+          };
+        });
+      },
 
       removeFromCurrentMeal: (recipeId) => set((state) => ({
         currentMeal: {
@@ -368,8 +418,8 @@ export const useStore = create<AppState>()(
     }),
     {
       name: 'recipe-storage',
-      version: 1, // Add version number
-      migrate, // Add migration function
+      version: 1,
+      migrate,
       partialize: (state) => ({
         recipes: state.recipes,
         shoppingList: state.shoppingList,
