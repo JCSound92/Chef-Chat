@@ -10,6 +10,8 @@
     --app-height: 100vh;
     --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
     --keyboard-height: 0px;
+    --header-height: 4rem;
+    --chat-height: 5rem;
   }
 
   body {
@@ -46,10 +48,14 @@
   }
 
   .content-container {
-    @apply flex-1 overflow-y-auto px-4 md:px-8;
-    padding-top: 4rem; /* Account for fixed header */
-    padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px)); /* Account for chat input */
+    @apply flex-1 overflow-y-auto;
+    height: calc(100vh - var(--header-height) - var(--chat-height));
+    padding-top: var(--header-height);
+    padding-bottom: calc(var(--chat-height) + env(safe-area-inset-bottom, 0px));
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    scroll-behavior: smooth;
+    will-change: scroll-position;
   }
 
   /* Center content for specific views */
@@ -83,6 +89,7 @@
 /* Chat container styles */
 .chat-input-container {
   @apply fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 shadow-lg z-50;
+  height: var(--chat-height);
   padding-bottom: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom));
   transform: translateZ(0);
   transition: transform 0.3s ease-out;

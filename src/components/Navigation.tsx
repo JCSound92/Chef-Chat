@@ -46,9 +46,9 @@ export function Navigation() {
   const pendingItems = shoppingList.filter(item => !item.completed).length;
 
   return (
-    <header className="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-lg shadow-sm z-50">
-      <div className="max-w-3xl mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
+    <header className="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-lg shadow-sm z-50" style={{ height: 'var(--header-height)' }}>
+      <div className="max-w-3xl mx-auto px-4 h-full">
+        <div className="flex items-center justify-between h-full">
           <button
             onClick={handleHomeClick}
             className="p-2 hover:bg-gray-100 rounded-lg"

@@ -12,7 +12,40 @@ import { CurrentMeal } from './components/CurrentMeal';
 import { CookingModePage } from './pages/CookingModePage';
 import { Toast } from './components/Toast';
 
-// Wrapper component to conditionally render ChatControl
+// Store scroll positions for each route
+const scrollPositions = new Map<string, number>();
+
+function ScrollContainer({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  // Save scroll position when leaving a route
+  useEffect(() => {
+    return () => {
+      if (containerRef.current) {
+        scrollPositions.set(location.pathname, containerRef.current.scrollTop);
+      }
+    };
+  }, [location.pathname]);
+
+  // Restore scroll position when entering a route
+  useEffect(() => {
+    if (containerRef.current) {
+      const savedPosition = scrollPositions.get(location.pathname) || 0;
+      containerRef.current.scrollTop = savedPosition;
+    }
+  }, [location.pathname]);
+
+  return (
+    <div 
+      ref={containerRef}
+      className="content-container"
+    >
+      {children}
+    </div>
+  );
+}
+
 function AppContent() {
   const location = useLocation();
   const showChat = location.pathname !== '/' && location.pathname !== '/shopping-list';
@@ -23,23 +56,18 @@ function AppContent() {
       doc.style.setProperty('--app-height', `${window.innerHeight}px`);
     }
 
-    // Set initial height
     setAppHeight();
-
-    // Update height on resize and orientation change
     window.addEventListener('resize', setAppHeight);
     window.addEventListener('orientationchange', () => {
       setTimeout(setAppHeight, 100);
     });
 
-    // Handle iOS keyboard
     if (/iPad|iPhone|iPod/.test(navigator.platform)) {
       if ('visualViewport' in window && window.visualViewport) {
         const viewport = window.visualViewport;
         let lastHeight = viewport.height;
         
         const handler = () => {
-          // Only update if height actually changed (keyboard state changed)
           if (viewport.height !== lastHeight) {
             lastHeight = viewport.height;
             const offsetHeight = window.innerHeight - viewport.height;
@@ -68,7 +96,7 @@ function AppContent() {
   return (
     <div className="h-full flex flex-col bg-gray-50">
       <Navigation />
-      <div className="content-container">
+      <ScrollContainer>
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/search" element={<SearchPage />} />
@@ -79,7 +107,7 @@ function AppContent() {
           <Route path="/shopping-list" element={<ShoppingListPage />} />
           <Route path="/cooking" element={<CookingModePage />} />
         </Routes>
-      </div>
+      </ScrollContainer>
       {showChat && <ChatControl />}
       <Toast />
     </div>
