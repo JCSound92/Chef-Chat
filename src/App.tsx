@@ -12,19 +12,17 @@ import { CurrentMeal } from './components/CurrentMeal';
 import { CookingModePage } from './pages/CookingModePage';
 import { Toast } from './components/Toast';
 
-// Handle mobile viewport height
-function setAppHeight() {
-  const vh = window.innerHeight * 0.01;
-  document.documentElement.style.setProperty('--vh', `${vh}px`);
-  document.documentElement.style.setProperty('--app-height', `${window.innerHeight}px`);
-}
-
 // Wrapper component to conditionally render ChatControl
 function AppContent() {
   const location = useLocation();
-  const showChat = location.pathname !== '/';
+  const showChat = location.pathname !== '/' && location.pathname !== '/shopping-list';
 
   useEffect(() => {
+    function setAppHeight() {
+      const doc = document.documentElement;
+      doc.style.setProperty('--app-height', `${window.innerHeight}px`);
+    }
+
     // Set initial height
     setAppHeight();
 
@@ -36,19 +34,21 @@ function AppContent() {
 
     // Handle iOS keyboard
     if (/iPad|iPhone|iPod/.test(navigator.platform)) {
-      const visualViewport = window.visualViewport;
-      if (visualViewport) {
-        const resizeHandler = () => {
-          const keyboardHeight = Math.max(0, window.innerHeight - visualViewport.height);
-          document.documentElement.style.setProperty('--keyboard-height', `${keyboardHeight}px`);
-          // Force a reflow to ensure the height is updated
-          document.body.style.height = '100%';
-          requestAnimationFrame(() => {
-            document.body.style.height = '';
-          });
+      if ('visualViewport' in window && window.visualViewport) {
+        const viewport = window.visualViewport;
+        const handler = () => {
+          const offsetHeight = window.innerHeight - viewport.height;
+          document.documentElement.style.setProperty(
+            '--keyboard-height',
+            `${offsetHeight}px`
+          );
         };
-        visualViewport.addEventListener('resize', resizeHandler);
-        return () => visualViewport.removeEventListener('resize', resizeHandler);
+        viewport.addEventListener('resize', handler);
+        viewport.addEventListener('scroll', handler);
+        return () => {
+          viewport.removeEventListener('resize', handler);
+          viewport.removeEventListener('scroll', handler);
+        };
       }
     }
 
@@ -61,7 +61,7 @@ function AppContent() {
   return (
     <div className="h-full flex flex-col bg-gray-50">
       <Navigation />
-      <main className="flex-1 flex flex-col relative">
+      <main className="flex-1 flex flex-col overflow-hidden">
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/search" element={<SearchPage />} />
