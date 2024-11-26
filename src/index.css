@@ -22,10 +22,11 @@
     height: 100vh;
     height: var(--app-height);
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: none;
   }
 
   #root {
-    @apply h-full;
+    @apply h-full flex flex-col;
   }
 }
 
@@ -47,19 +48,22 @@
     @apply bg-white rounded-2xl shadow-xl shadow-gray-100/50 p-8;
   }
 
+  .main-layout {
+    @apply flex flex-col flex-1;
+    margin-top: var(--nav-height);
+    margin-bottom: var(--chat-height);
+  }
+
   .content-container {
     @apply flex-1 overflow-y-auto;
-    height: calc(100vh - var(--nav-height) - var(--chat-height));
-    padding-top: var(--nav-height);
-    -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: contain;
     scroll-behavior: smooth;
     will-change: scroll-position;
+    height: calc(100vh - var(--nav-height) - var(--chat-height));
   }
 
   .page-container {
     @apply flex flex-col min-h-full;
-    padding-bottom: calc(var(--chat-height) + env(safe-area-inset-bottom, 0px));
   }
 
   /* Center content for specific views */
@@ -68,7 +72,7 @@
   }
 
   .page-header {
-    @apply flex-shrink-0 bg-white border-b border-gray-100 px-8 py-4;
+    @apply flex-shrink-0 bg-white border-b border-gray-100 px-8 py-4 sticky top-0 z-10;
   }
 }
 

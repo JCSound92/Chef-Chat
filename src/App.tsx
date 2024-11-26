@@ -37,10 +37,7 @@ function ScrollContainer({ children }: { children: React.ReactNode }) {
   }, [location.pathname]);
 
   return (
-    <div 
-      ref={containerRef}
-      className="content-container"
-    >
+    <div ref={containerRef} className="content-container">
       {children}
     </div>
   );
@@ -96,18 +93,20 @@ function AppContent() {
   return (
     <div className="h-full flex flex-col bg-gray-50">
       <Navigation />
-      <ScrollContainer>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/search" element={<SearchPage />} />
-          <Route path="/chat" element={<ChatPage />} />
-          <Route path="/recent" element={<RecentRecipesPage />} />
-          <Route path="/saved" element={<SavedRecipesPage />} />
-          <Route path="/current-meal" element={<CurrentMeal />} />
-          <Route path="/shopping-list" element={<ShoppingListPage />} />
-          <Route path="/cooking" element={<CookingModePage />} />
-        </Routes>
-      </ScrollContainer>
+      <div className="main-layout">
+        <ScrollContainer>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/search" element={<SearchPage />} />
+            <Route path="/chat" element={<ChatPage />} />
+            <Route path="/recent" element={<RecentRecipesPage />} />
+            <Route path="/saved" element={<SavedRecipesPage />} />
+            <Route path="/current-meal" element={<CurrentMeal />} />
+            <Route path="/shopping-list" element={<ShoppingListPage />} />
+            <Route path="/cooking" element={<CookingModePage />} />
+          </Routes>
+        </ScrollContainer>
+      </div>
       {showChat && <ChatControl />}
       <Toast />
     </div>
