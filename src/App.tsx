@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { Navigation } from './components/Navigation';
 import { ChatControl } from './components/ChatControl';
@@ -12,15 +12,36 @@ import { CurrentMeal } from './components/CurrentMeal';
 import { CookingModePage } from './pages/CookingModePage';
 import { Toast } from './components/Toast';
 
+// Handle mobile viewport height
+function setAppHeight() {
+  const doc = document.documentElement;
+  doc.style.setProperty('--app-height', `${window.innerHeight}px`);
+}
+
 // Wrapper component to conditionally render ChatControl
 function AppContent() {
   const location = useLocation();
   const showChat = location.pathname !== '/';
 
+  useEffect(() => {
+    // Set initial height
+    setAppHeight();
+
+    // Update height on resize and orientation change
+    window.addEventListener('resize', setAppHeight);
+    window.addEventListener('orientationchange', setAppHeight);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('resize', setAppHeight);
+      window.removeEventListener('orientationchange', setAppHeight);
+    };
+  }, []);
+
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="h-full flex flex-col bg-gray-50 overflow-hidden">
       <Navigation />
-      <main className="flex-1 flex flex-col mt-16 mb-20">
+      <main className="flex-1 flex flex-col mt-16 relative overflow-hidden">
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/search" element={<SearchPage />} />
