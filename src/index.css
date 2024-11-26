@@ -19,17 +19,11 @@
                  "Segoe UI Emoji", "Segoe UI Symbol";
     height: 100vh;
     height: var(--app-height);
-    overflow: hidden;
-    /* Prevent content shift on iOS */
-    position: fixed;
-    width: 100%;
     -webkit-overflow-scrolling: touch;
   }
 
   #root {
     @apply h-full;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
   }
 }
 
@@ -51,16 +45,10 @@
     @apply bg-white rounded-2xl shadow-xl shadow-gray-100/50 p-8;
   }
 
-  .app-header {
-    @apply fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-lg shadow-sm z-50;
-    height: 4rem;
-  }
-
-  .app-content {
+  .content-container {
     @apply flex-1 overflow-y-auto px-4 md:px-8;
-    padding-top: 4rem;
-    padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
-    height: 100%;
+    padding-top: 4rem; /* Account for fixed header */
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px)); /* Account for chat input */
     -webkit-overflow-scrolling: touch;
   }
 

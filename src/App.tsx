@@ -68,7 +68,7 @@ function AppContent() {
   return (
     <div className="h-full flex flex-col bg-gray-50">
       <Navigation />
-      <main className="flex-1 flex flex-col overflow-hidden">
+      <div className="content-container">
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/search" element={<SearchPage />} />
@@ -79,7 +79,7 @@ function AppContent() {
           <Route path="/shopping-list" element={<ShoppingListPage />} />
           <Route path="/cooking" element={<CookingModePage />} />
         </Routes>
-      </main>
+      </div>
       {showChat && <ChatControl />}
       <Toast />
     </div>
