@@ -14,6 +14,20 @@ export interface Recipe {
   currentServings?: number;
 }
 
+export interface CurrentMeal {
+  recipes: Recipe[];
+  status: 'building' | 'shopping' | 'cooking';
+  servings: number;
+  originalRecipes: Recipe[];
+}
+
+export interface ShoppingListItem {
+  id: string;
+  name: string;
+  recipeId: string | null;
+  completed: boolean;
+}
+
 export interface ChatMessage {
   id: string;
   message: string;
@@ -31,20 +45,6 @@ export interface CookingState {
   isActive: boolean;
   currentStepIndex: number;
   currentRecipeIndex: number;
-}
-
-export interface CurrentMeal {
-  recipes: Recipe[];
-  status: 'building' | 'shopping' | 'cooking';
-  servings: number;
-  originalRecipes: Recipe[];
-}
-
-export interface ShoppingListItem {
-  id: string;
-  name: string;
-  recipeId: string | null;
-  completed: boolean;
 }
 
 export interface VoiceState {
@@ -79,9 +79,9 @@ export interface AppState {
   chatContexts: ChatContexts;
   lastRecipeRequest: string;
   currentMeal: CurrentMeal;
+  cookingState: CookingState;
   voiceState: VoiceState;
   mealPlans: MealPlan[];
-  cookingState: CookingState;
 
   // Actions
   setIsLoading: (loading: boolean) => void;
