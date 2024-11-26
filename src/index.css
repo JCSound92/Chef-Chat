@@ -6,18 +6,19 @@
 /* Base styles */
 @layer base {
   :root {
+    --vh: 1vh;
     --app-height: 100%;
     --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
     --keyboard-height: 0px;
   }
 
   html {
-    @apply h-full overflow-hidden overscroll-none;
+    @apply h-full;
     height: var(--app-height);
   }
 
   body {
-    @apply antialiased text-[#333333] bg-[#F8F8F8] h-full overflow-hidden;
+    @apply antialiased text-[#333333] bg-[#F8F8F8] h-full;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, 
                  Helvetica, Arial, sans-serif, "Apple Color Emoji", 
                  "Segoe UI Emoji", "Segoe UI Symbol";
@@ -49,15 +50,13 @@
   .app-header {
     @apply fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-lg shadow-sm z-50;
     height: theme('spacing.16');
-    transform: translateZ(0); /* Force GPU acceleration */
   }
 
   .app-content {
-    @apply flex-1 overflow-y-auto;
-    height: calc(100% - theme('spacing.16') - var(--safe-area-inset-bottom));
+    @apply flex-1 overflow-y-auto px-4 md:px-8;
     padding-top: theme('spacing.16');
     padding-bottom: calc(theme('spacing.20') + var(--safe-area-inset-bottom));
-    transform: translateZ(0); /* Force GPU acceleration */
+    height: calc(100% - theme('spacing.16'));
   }
 
   /* Center content for specific views */
@@ -88,38 +87,18 @@
   }
 }
 
-/* Mobile-friendly chat container */
-.chat-container {
-  @apply fixed inset-0 flex flex-col;
-  padding-bottom: var(--safe-area-inset-bottom);
-  transform: translateZ(0); /* Force GPU acceleration */
-}
-
-.chat-messages {
-  @apply flex-1 overflow-y-auto;
-  padding-bottom: var(--safe-area-inset-bottom);
-}
-
+/* Chat container styles */
 .chat-input-container {
-  @apply bg-white border-t border-gray-100 shadow-lg;
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 50;
-  padding-bottom: calc(var(--safe-area-inset-bottom));
-  transform: translateZ(0); /* Force GPU acceleration */
+  @apply fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 shadow-lg z-50;
+  padding-bottom: max(var(--safe-area-inset-bottom), env(safe-area-inset-bottom, 0px));
+  transform: translateZ(0);
 }
 
 /* iOS specific styles */
 @supports (-webkit-touch-callout: none) {
-  .app-header {
-    position: sticky;
-    top: 0;
-  }
-
   .chat-input-container {
     position: sticky;
     bottom: 0;
+    padding-bottom: max(var(--safe-area-inset-bottom), env(safe-area-inset-bottom, 0px));
   }
 }

@@ -12,7 +12,7 @@ import { CurrentMeal } from './components/CurrentMeal';
 import { CookingModePage } from './pages/CookingModePage';
 import { Toast } from './components/Toast';
 
-// Handle mobile viewport height and keyboard
+// Handle mobile viewport height
 function setAppHeight() {
   const vh = window.innerHeight * 0.01;
   document.documentElement.style.setProperty('--vh', `${vh}px`);
@@ -31,7 +31,6 @@ function AppContent() {
     // Update height on resize and orientation change
     window.addEventListener('resize', setAppHeight);
     window.addEventListener('orientationchange', () => {
-      // Small delay to ensure new dimensions are available
       setTimeout(setAppHeight, 100);
     });
 
@@ -42,13 +41,17 @@ function AppContent() {
         const resizeHandler = () => {
           const keyboardHeight = Math.max(0, window.innerHeight - visualViewport.height);
           document.documentElement.style.setProperty('--keyboard-height', `${keyboardHeight}px`);
+          // Force a reflow to ensure the height is updated
+          document.body.style.height = '100%';
+          requestAnimationFrame(() => {
+            document.body.style.height = '';
+          });
         };
         visualViewport.addEventListener('resize', resizeHandler);
         return () => visualViewport.removeEventListener('resize', resizeHandler);
       }
     }
 
-    // Cleanup
     return () => {
       window.removeEventListener('resize', setAppHeight);
       window.removeEventListener('orientationchange', setAppHeight);
@@ -57,10 +60,8 @@ function AppContent() {
 
   return (
     <div className="h-full flex flex-col bg-gray-50">
-      <header className="app-header">
-        <Navigation />
-      </header>
-      <main className="app-content">
+      <Navigation />
+      <main className="flex-1 flex flex-col relative">
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/search" element={<SearchPage />} />
