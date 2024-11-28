@@ -37,10 +37,10 @@ export function RecipeModal({ onClose }: RecipeModalProps) {
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 50 }}
-          className="absolute inset-4 md:inset-20 bg-white rounded-2xl overflow-y-auto"
+          className="absolute inset-4 md:inset-20 bg-white rounded-2xl overflow-y-auto no-scrollbar"
           onClick={e => e.stopPropagation()}
         >
-          <div className="p-6">
+          <div className="p-6 pb-32">
             <div className="max-w-4xl mx-auto">
               {/* Header */}
               <div className="mb-8">
