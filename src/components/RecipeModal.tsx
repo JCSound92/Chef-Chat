@@ -18,6 +18,12 @@ export function RecipeModal({ onClose }: RecipeModalProps) {
     onClose();
   };
 
+  const handleFavoriteClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleFavorite(currentRecipe.id);
+  };
+
   return (
     <AnimatePresence>
       <motion.div
@@ -35,7 +41,6 @@ export function RecipeModal({ onClose }: RecipeModalProps) {
           onClick={e => e.stopPropagation()}
         >
           <div className="h-full flex flex-col">
-            {/* Header */}
             <div className="flex-shrink-0 border-b border-gray-100 p-6">
               <div className="flex items-center gap-4 mb-6">
                 <Utensils className="w-12 h-12 text-[#e05f3e]" />
@@ -58,10 +63,14 @@ export function RecipeModal({ onClose }: RecipeModalProps) {
                 </button>
 
                 <button
-                  onClick={() => toggleFavorite(currentRecipe.id)}
+                  onClick={handleFavoriteClick}
                   className="p-3 hover:text-[#FF6B6B] transition-colors rounded-xl hover:bg-red-50"
                 >
-                  <Heart className={currentRecipe.favorite ? 'fill-[#982517] text-[#982517]' : ''} />
+                  <Heart 
+                    className={`w-6 h-6 transition-colors ${
+                      currentRecipe.favorite ? 'fill-[#982517] text-[#982517]' : ''
+                    }`}
+                  />
                 </button>
 
                 <button
@@ -73,35 +82,42 @@ export function RecipeModal({ onClose }: RecipeModalProps) {
               </div>
             </div>
 
-            {/* Content */}
-            <div className="flex-1 overflow-auto p-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {/* Ingredients */}
-                <div className="md:col-span-1">
-                  <div className="bg-gray-50 rounded-xl p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-xl font-bold">Ingredients</h2>
-                      <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <Clock className="w-4 h-4" />
-                        <span>{currentRecipe.time} mins</span>
-                      </div>
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="max-w-4xl mx-auto">
+                {/* Recipe Info */}
+                <div className="mb-8">
+                  {currentRecipe.description && (
+                    <p className="text-gray-600 mb-4">{currentRecipe.description}</p>
+                  )}
+                  <div className="flex items-center gap-4 text-sm text-gray-500">
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4" />
+                      <span>{currentRecipe.time} mins</span>
                     </div>
-                    <ul className="space-y-2">
-                      {currentRecipe.ingredients.map((ingredient, index) => (
-                        <li
-                          key={index}
-                          className="flex items-center gap-2 text-gray-700 py-1 border-b border-gray-200 last:border-0"
-                        >
-                          <span className="w-2 h-2 rounded-full bg-[#e05f3e]" />
-                          {ingredient}
-                        </li>
-                      ))}
-                    </ul>
+                    {currentRecipe.cuisine && (
+                      <span className="text-[#e05f3e]">{currentRecipe.cuisine}</span>
+                    )}
                   </div>
                 </div>
 
+                {/* Ingredients */}
+                <div className="bg-gray-50 rounded-xl p-6 mb-8">
+                  <h2 className="text-xl font-bold mb-4">Ingredients</h2>
+                  <ul className="space-y-2">
+                    {currentRecipe.ingredients.map((ingredient, index) => (
+                      <li
+                        key={index}
+                        className="flex items-center gap-2 text-gray-700 py-1 border-b border-gray-200 last:border-0"
+                      >
+                        <span className="w-2 h-2 rounded-full bg-[#e05f3e]" />
+                        {ingredient}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
                 {/* Steps */}
-                <div className="md:col-span-2">
+                <div>
                   <h2 className="text-xl font-bold mb-6">Instructions</h2>
                   <ol className="space-y-6">
                     {currentRecipe.steps.map((step, index) => (
