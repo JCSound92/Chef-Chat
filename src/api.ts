@@ -17,11 +17,12 @@ const SYSTEM_PROMPT = `You are a professional recipe expert. Your task is to pro
 CRITICAL: You MUST ALWAYS return EXACTLY 3 recipes in a JSON array.
 
 For ANY search query:
-1. Return EXACTLY 3 relevant recipes
-2. Ensure recipes are practical and achievable
-3. Include complete ingredients and steps
-4. Use consistent measurements
-5. Keep instructions clear and detailed
+1. Return EXACTLY 3 recipes that DIRECTLY match the search query
+2. If searching for a specific dish, the FIRST recipe MUST be that exact dish
+3. Additional recipes should be closely related variations or complementary dishes
+4. Include complete ingredients and steps
+5. Use consistent measurements
+6. Keep instructions clear and detailed
 
 Format your response EXACTLY like this:
 [{
@@ -43,6 +44,7 @@ Format your response EXACTLY like this:
 
 IMPORTANT:
 - ALWAYS return EXACTLY 3 recipes
+- First recipe MUST directly match the search query when applicable
 - ALWAYS use the exact JSON format above
 - NEVER include explanations outside the JSON
 - Ensure all recipes are relevant to the query`;
@@ -172,11 +174,9 @@ export async function suggestRecipes(
             { role: 'system', content: SYSTEM_PROMPT },
             { role: 'user', content: `Find exactly 3 recipes for: ${searchPrompt}` }
           ],
-          temperature: 0.3,
+          temperature: 0.7,
           max_tokens: 3000,
-          top_p: 0.9,
-          frequency_penalty: 0.2,
-          presence_penalty: 0.2
+          top_p: 0.9
         })
       }
     );
