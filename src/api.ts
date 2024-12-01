@@ -12,37 +12,35 @@ if (import.meta.env.MODE === 'development') {
   });
 }
 
-const SYSTEM_PROMPT = `You are a professional chef and recipe expert. Your task is to provide detailed, accurate recipes that match the user's request.
+const SYSTEM_PROMPT = `You are a professional chef and recipe expert. Your primary task is to provide detailed recipes that match the user's request.
 
-When suggesting recipes, ALWAYS follow these rules:
-
-1. PROVIDE AT LEAST 3 RECIPES for every request
-2. For specific dishes (e.g. "chicken shawarma"):
-   - First recipe MUST be the traditional version
-   - Include popular variations
-   - All recipes must be directly related to the requested dish
+ALWAYS follow these rules:
+1. Return EXACTLY 3 recipes for every request
+2. For specific dish requests (e.g. "chicken shawarma"):
+   - First recipe MUST be the exact traditional version
+   - Include 2 popular variations
+   - All recipes must directly relate to the main dish
 3. For ingredient-based searches:
-   - Focus on recipes that prominently feature the ingredients
+   - All recipes must use the specified ingredients
    - Provide diverse cooking methods
 4. For meal planning:
    - Ensure recipes complement each other
-   - Consider cooking times and complexity
+   - Consider balanced nutrition
 
-Respond with recipes in this JSON array format:
+Format ALL responses as a JSON array with EXACTLY 3 recipes:
 [{
-  "title": "Recipe Name",
-  "description": "Brief description of the dish and its origins",
+  "title": "Recipe Name (be specific)",
+  "description": "2-3 sentence description of dish origin and taste",
   "ingredients": [
-    "exact ingredient with precise measurement",
-    "exact ingredient with precise measurement"
+    "precise measurements (e.g. '2 cups all-purpose flour')",
+    "exact quantities for every ingredient"
   ],
   "steps": [
-    "Detailed step with specific temperature and time",
-    "Clear instruction with visual cues",
-    "Important technique explanation",
-    "Tips for best results"
+    "numbered steps with exact temperatures and times",
+    "specific techniques and visual cues",
+    "clear instructions for each action"
   ],
-  "time": totalMinutesAsNumber,
+  "time": exactMinutesAsNumber,
   "difficulty": "easy|medium|hard",
   "cuisine": "specific cuisine type",
   "type": "main|appetizer|side|dessert|drink"
@@ -121,12 +119,15 @@ async function fetchWithRetry(
     
     return response;
   } catch (error) {
+    console.error('Fetch error:', error);
+    
     if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
       throw new Error('Network error: Unable to connect to the API. Please check your internet connection.');
     }
     
     if (retries === 0) throw error;
     
+    console.log(`Retrying request... (${retries} attempts remaining)`);
     await delay(backoff);
     return fetchWithRetry(url, options, retries - 1, backoff * 1.5);
   }
@@ -155,6 +156,8 @@ export async function suggestRecipes(
       enhancedPrompt = `Current meal includes: ${mealContext}. ${prompt}`;
     }
 
+    console.log('Sending recipe request:', enhancedPrompt);
+
     const response = await fetchWithRetry(
       `${BASE_URL}/chat/completions`,
       {
@@ -163,12 +166,13 @@ export async function suggestRecipes(
           model,
           messages: [
             { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: `Provide at least 3 recipes for: ${enhancedPrompt}` },
+            { role: 'user', content: `Find exactly 3 recipes for: ${enhancedPrompt}` },
           ],
-          temperature: 0.7,
-          max_tokens: 3000,
-          presence_penalty: 0,
-          frequency_penalty: 0
+          temperature: 0.3,
+          max_tokens: 4000,
+          top_p: 0.9,
+          presence_penalty: 0.1,
+          frequency_penalty: 0.1
         })
       }
     );
@@ -176,29 +180,39 @@ export async function suggestRecipes(
     const data = await response.json();
     
     if (!data.choices?.[0]?.message?.content) {
+      console.error('Invalid API response:', data);
       throw new Error('Invalid API response format');
     }
     
     const content = data.choices[0].message.content;
+    console.log('Raw API response:', content);
+
     const jsonMatch = content.match(/\[[\s\S]*\]/);
     
     if (!jsonMatch) {
-      console.error('Raw API response:', content);
       throw new Error('Invalid response format: Unable to parse recipe data');
     }
     
     try {
       const recipesData = JSON.parse(jsonMatch[0]);
       
-      if (!Array.isArray(recipesData) || recipesData.length === 0) {
-        throw new Error('No recipes found in the response');
+      if (!Array.isArray(recipesData)) {
+        throw new Error('Response is not an array');
       }
 
-      return recipesData.map((recipe: any) => ({
+      if (recipesData.length === 0) {
+        throw new Error('No recipes found in response');
+      }
+
+      const recipes = recipesData.map((recipe: any) => ({
         ...recipe,
         id: `${Date.now()}-${Math.random()}`,
         favorite: false,
       }));
+
+      console.log('Processed recipes:', recipes);
+      return recipes;
+
     } catch (parseError) {
       console.error('JSON Parse Error:', parseError);
       console.error('Attempted to parse:', jsonMatch[0]);
@@ -206,7 +220,7 @@ export async function suggestRecipes(
     }
   } catch (error) {
     console.error('Recipe suggestion error:', error);
-    throw new Error(`Recipe suggestion failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw error;
   }
 }
 
