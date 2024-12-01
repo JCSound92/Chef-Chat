@@ -12,56 +12,41 @@ if (import.meta.env.MODE === 'development') {
   });
 }
 
-const SYSTEM_PROMPT = `You are a professional chef and recipe expert. Your primary goal is to provide accurate, relevant recipes that match the user's request exactly.
+const SYSTEM_PROMPT = `You are a professional chef and recipe expert. Your task is to provide detailed, accurate recipes that match the user's request.
 
-When providing recipes, follow these strict rules:
+When suggesting recipes, ALWAYS follow these rules:
 
-1. EXACT MATCH FIRST
-   - Always prioritize recipes that EXACTLY match the user's search terms
-   - For specific dishes (e.g., "chicken shawarma"), the first recipe MUST be the traditional version
-   - Additional recipes should be closely related variations of the same dish
-   - Never suggest unrelated dishes unless specifically requested
+1. PROVIDE AT LEAST 3 RECIPES for every request
+2. For specific dishes (e.g. "chicken shawarma"):
+   - First recipe MUST be the traditional version
+   - Include popular variations
+   - All recipes must be directly related to the requested dish
+3. For ingredient-based searches:
+   - Focus on recipes that prominently feature the ingredients
+   - Provide diverse cooking methods
+4. For meal planning:
+   - Ensure recipes complement each other
+   - Consider cooking times and complexity
 
-2. MINIMUM REQUIREMENTS
-   - Always provide at least 3 recipes
-   - For specific dishes: provide the traditional version plus relevant variations
-   - For ingredient searches: focus only on dishes featuring those ingredients
-   - For meal planning: ensure all recipes work together cohesively
-
-3. RECIPE QUALITY
-   - Include precise measurements and quantities
-   - Provide detailed, step-by-step instructions
-   - List all required ingredients
-   - Include accurate cooking times and temperatures
-   - Specify proper techniques and methods
-
-4. VARIATIONS (only when needed to reach 3 recipes)
-   - For specific dishes: include regional variations or modern interpretations
-   - For ingredients: suggest different cooking methods for the same ingredients
-   - For meal planning: provide complementary dishes that enhance the meal
-
-ALWAYS respond with exactly 3 or more recipes in this JSON array format:
+Respond with recipes in this JSON array format:
 [{
-  "title": "Recipe Name (be specific and accurate)",
-  "description": "Detailed description including origin and key characteristics",
+  "title": "Recipe Name",
+  "description": "Brief description of the dish and its origins",
   "ingredients": [
-    "precise ingredient with exact measurement",
-    "precise ingredient with exact measurement"
+    "exact ingredient with precise measurement",
+    "exact ingredient with precise measurement"
   ],
   "steps": [
-    "Detailed step with specific temperature, time, and technique",
-    "Clear instruction with visual cues and important details",
-    "Explanation of crucial techniques and common pitfalls",
-    "Tips for achieving the right texture and flavor",
-    "Signs of proper cooking and completion"
+    "Detailed step with specific temperature and time",
+    "Clear instruction with visual cues",
+    "Important technique explanation",
+    "Tips for best results"
   ],
-  "time": exactMinutes,
+  "time": totalMinutesAsNumber,
   "difficulty": "easy|medium|hard",
   "cuisine": "specific cuisine type",
   "type": "main|appetizer|side|dessert|drink"
-}]
-
-CRITICAL: Never suggest recipes that don't directly relate to the user's request. If a specific dish is requested, all recipes must be variations of that dish.`;
+}]`;
 
 const COOKING_PROMPT = `You are a friendly Midwest cooking assistant named Oh Sure Chef. 
 Keep responses brief and helpful, occasionally using phrases like "oh sure", "you betcha", or "ope" naturally.
@@ -178,12 +163,12 @@ export async function suggestRecipes(
           model,
           messages: [
             { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: `Provide recipes for: ${enhancedPrompt}. Remember to focus ONLY on recipes that directly match this request.` },
+            { role: 'user', content: `Provide at least 3 recipes for: ${enhancedPrompt}` },
           ],
-          temperature: 0.3,
-          max_tokens: 2000,
-          presence_penalty: 0.1,
-          frequency_penalty: 0.2
+          temperature: 0.7,
+          max_tokens: 3000,
+          presence_penalty: 0,
+          frequency_penalty: 0
         })
       }
     );
@@ -198,24 +183,27 @@ export async function suggestRecipes(
     const jsonMatch = content.match(/\[[\s\S]*\]/);
     
     if (!jsonMatch) {
+      console.error('Raw API response:', content);
       throw new Error('Invalid response format: Unable to parse recipe data');
     }
     
-    const recipesData = JSON.parse(jsonMatch[0]);
-    
-    if (!Array.isArray(recipesData)) {
-      throw new Error('Invalid response format: Expected array of recipes');
-    }
+    try {
+      const recipesData = JSON.parse(jsonMatch[0]);
+      
+      if (!Array.isArray(recipesData) || recipesData.length === 0) {
+        throw new Error('No recipes found in the response');
+      }
 
-    if (recipesData.length < 3) {
-      throw new Error('Not enough recipes found. Please try a different search.');
+      return recipesData.map((recipe: any) => ({
+        ...recipe,
+        id: `${Date.now()}-${Math.random()}`,
+        favorite: false,
+      }));
+    } catch (parseError) {
+      console.error('JSON Parse Error:', parseError);
+      console.error('Attempted to parse:', jsonMatch[0]);
+      throw new Error('Failed to parse recipe data');
     }
-    
-    return recipesData.map((recipe: any) => ({
-      ...recipe,
-      id: `${Date.now()}-${Math.random()}`,
-      favorite: false,
-    }));
   } catch (error) {
     console.error('Recipe suggestion error:', error);
     throw new Error(`Recipe suggestion failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
