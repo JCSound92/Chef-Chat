@@ -12,56 +12,44 @@ if (import.meta.env.MODE === 'development') {
   });
 }
 
-const SYSTEM_PROMPT = `You are a professional chef and recipe expert. Your task is to provide detailed recipes that match the user's request.
+const SYSTEM_PROMPT = `You are a professional recipe expert. Your task is to provide detailed recipes based on user requests.
 
-You MUST ALWAYS return EXACTLY 3 recipes in a JSON array, following these rules:
+CRITICAL: You MUST ALWAYS return EXACTLY 3 recipes in a JSON array.
 
-1. For specific dish requests (e.g. "chicken shawarma"):
-   - First recipe MUST be the traditional version
-   - Include 2 related variations
-   - All recipes must directly relate to the requested dish
+For ANY search query:
+1. Return EXACTLY 3 relevant recipes
+2. Ensure recipes are practical and achievable
+3. Include complete ingredients and steps
+4. Use consistent measurements
+5. Keep instructions clear and detailed
 
-2. For ingredient-based searches:
-   - All recipes must use the specified ingredients
-   - Provide diverse cooking methods
-   - Ensure recipes are practical and achievable
-
-3. For meal planning:
-   - Ensure recipes complement each other
-   - Consider balanced nutrition
-   - Vary cooking methods and ingredients
-
-REQUIRED format for EVERY response (always return EXACTLY 3 recipes):
+Format your response EXACTLY like this:
 [{
-  "title": "Specific Recipe Name",
-  "description": "2-3 sentence description explaining the dish",
+  "title": "Recipe Name",
+  "description": "Brief description of the dish",
   "ingredients": [
-    "exact measurements for each ingredient",
-    "e.g., '2 cups all-purpose flour'"
+    "2 cups all-purpose flour",
+    "1 teaspoon salt"
   ],
   "steps": [
-    "detailed step-by-step instructions",
-    "include temperatures and times",
-    "provide visual cues and techniques"
+    "Detailed step 1 with specific instructions",
+    "Detailed step 2 with temperatures and times"
   ],
   "time": 45,
-  "difficulty": "easy|medium|hard",
-  "cuisine": "specific cuisine type",
-  "type": "main|appetizer|side|dessert|drink"
-}]`;
+  "difficulty": "easy",
+  "cuisine": "Italian",
+  "type": "main"
+}]
+
+IMPORTANT:
+- ALWAYS return EXACTLY 3 recipes
+- ALWAYS use the exact JSON format above
+- NEVER include explanations outside the JSON
+- Ensure all recipes are relevant to the query`;
 
 const COOKING_PROMPT = `You are a friendly Midwest cooking assistant named Oh Sure Chef. 
 Keep responses brief and helpful, occasionally using phrases like "oh sure", "you betcha", or "ope" naturally.
-Focus on practical cooking advice and tips.
-You can help with:
-- Ingredient substitutions
-- Temperature conversions
-- Timing questions
-- Technique explanations
-- Troubleshooting cooking issues
-- Kitchen measurement conversions
-- Food safety guidelines
-- Equipment recommendations`;
+Focus on practical cooking advice and tips.`;
 
 async function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -89,15 +77,6 @@ async function fetchWithRetry(
       }
     };
 
-    if (import.meta.env.MODE === 'development') {
-      console.log('Making API request:', {
-        url,
-        method: fetchOptions.method,
-        hasAuth: !!headers.Authorization,
-        body: JSON.parse(options.body as string)
-      });
-    }
-
     const response = await fetch(url, fetchOptions);
     
     if (!response.ok) {
@@ -105,62 +84,56 @@ async function fetchWithRetry(
       console.error('API Error Response:', {
         status: response.status,
         statusText: response.statusText,
-        error: errorText,
-        headers: Object.fromEntries(response.headers.entries())
+        error: errorText
       });
       
       if (response.status === 401) {
-        throw new Error('Invalid API key. Please check your environment variables.');
+        throw new Error('Invalid API key');
       }
       if (response.status === 403) {
-        throw new Error('API access forbidden. Please check your API key permissions.');
+        throw new Error('API access forbidden');
       }
       if (response.status === 429) {
-        throw new Error('Rate limit exceeded. Please try again later.');
+        throw new Error('Rate limit exceeded');
       }
       
-      throw new Error(`API request failed (${response.status}): ${errorText}`);
+      throw new Error(`API request failed: ${errorText}`);
     }
     
     return response;
   } catch (error) {
-    console.error('Fetch error:', error);
-    
-    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-      throw new Error('Network error: Unable to connect to the API. Please check your internet connection.');
-    }
-    
     if (retries === 0) throw error;
-    
-    console.log(`Retrying request... (${retries} attempts remaining)`);
     await delay(backoff);
-    return fetchWithRetry(url, options, retries - 1, backoff * 1.5);
+    return fetchWithRetry(url, options, retries - 1, backoff * 2);
   }
 }
 
-function validateApiKey() {
-  if (!API_KEY) {
-    throw new Error('API key not found. Please check your environment variables.');
-  }
-  return true;
-}
+function validateRecipe(recipe: any): recipe is Recipe {
+  if (!recipe || typeof recipe !== 'object') return false;
 
-function validateRecipe(recipe: any): boolean {
-  const requiredFields = ['title', 'ingredients', 'steps', 'time', 'difficulty', 'cuisine', 'type'];
-  const missingFields = requiredFields.filter(field => !recipe[field]);
-  
-  if (missingFields.length > 0) {
-    console.error('Invalid recipe format, missing fields:', missingFields);
-    return false;
+  const required = [
+    'title',
+    'ingredients',
+    'steps',
+    'time',
+    'difficulty',
+    'cuisine',
+    'type'
+  ];
+
+  for (const field of required) {
+    if (!(field in recipe)) return false;
   }
 
   if (!Array.isArray(recipe.ingredients) || recipe.ingredients.length === 0) {
-    console.error('Invalid recipe ingredients');
     return false;
   }
 
   if (!Array.isArray(recipe.steps) || recipe.steps.length === 0) {
-    console.error('Invalid recipe steps');
+    return false;
+  }
+
+  if (typeof recipe.time !== 'number' || recipe.time <= 0) {
     return false;
   }
 
@@ -172,18 +145,22 @@ export async function suggestRecipes(
   currentMeal?: Recipe[],
   model = 'llama-3.1-70b-instruct'
 ): Promise<Recipe[]> {
-  try {
-    validateApiKey();
+  if (!prompt.trim()) {
+    throw new Error('Search query cannot be empty');
+  }
 
-    let enhancedPrompt = prompt;
-    if (currentMeal && currentMeal.length > 0) {
-      const mealContext = currentMeal.map(recipe => 
-        `${recipe.title} (${recipe.type || 'main course'})`
-      ).join(', ');
-      enhancedPrompt = `Current meal includes: ${mealContext}. ${prompt}`;
+  try {
+    if (!API_KEY) {
+      throw new Error('API key is required');
     }
 
-    console.log('Sending recipe request:', enhancedPrompt);
+    let searchPrompt = prompt;
+    if (currentMeal?.length) {
+      const mealContext = currentMeal
+        .map(recipe => recipe.title)
+        .join(', ');
+      searchPrompt = `Current meal includes: ${mealContext}. Find recipes to go with: ${prompt}`;
+    }
 
     const response = await fetchWithRetry(
       `${BASE_URL}/chat/completions`,
@@ -193,13 +170,13 @@ export async function suggestRecipes(
           model,
           messages: [
             { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: `Find exactly 3 recipes for: ${enhancedPrompt}. Remember to ALWAYS return exactly 3 recipes in the specified JSON format.` },
+            { role: 'user', content: `Find exactly 3 recipes for: ${searchPrompt}` }
           ],
-          temperature: 0.2,
-          max_tokens: 4000,
-          top_p: 0.95,
-          presence_penalty: 0.1,
-          frequency_penalty: 0.1
+          temperature: 0.3,
+          max_tokens: 3000,
+          top_p: 0.9,
+          frequency_penalty: 0.2,
+          presence_penalty: 0.2
         })
       }
     );
@@ -207,57 +184,42 @@ export async function suggestRecipes(
     const data = await response.json();
     
     if (!data.choices?.[0]?.message?.content) {
-      console.error('Invalid API response:', data);
-      throw new Error('Invalid API response format');
+      throw new Error('Invalid API response');
     }
-    
-    const content = data.choices[0].message.content;
-    console.log('Raw API response:', content);
 
-    const jsonMatch = content.match(/\[[\s\S]*\]/);
+    const content = data.choices[0].message.content;
+    const match = content.match(/\[[\s\S]*\]/);
     
-    if (!jsonMatch) {
-      console.error('No JSON array found in response');
-      throw new Error('Invalid response format: Unable to parse recipe data');
+    if (!match) {
+      throw new Error('No recipe data found in response');
     }
-    
+
+    let recipes: Recipe[];
     try {
-      const recipesData = JSON.parse(jsonMatch[0]);
-      
-      if (!Array.isArray(recipesData)) {
+      const parsed = JSON.parse(match[0]);
+      if (!Array.isArray(parsed)) {
         throw new Error('Response is not an array');
       }
-
-      if (recipesData.length === 0) {
-        throw new Error('No recipes found in response');
-      }
-
-      if (recipesData.length !== 3) {
-        console.warn(`Expected 3 recipes, got ${recipesData.length}`);
-      }
-
-      const validRecipes = recipesData.filter(validateRecipe);
-
-      if (validRecipes.length === 0) {
-        throw new Error('No valid recipes found in response');
-      }
-
-      const recipes = validRecipes.map((recipe: any) => ({
-        ...recipe,
-        id: `${Date.now()}-${Math.random()}`,
-        favorite: false,
-      }));
-
-      console.log('Processed recipes:', recipes);
-      return recipes;
-
-    } catch (parseError) {
-      console.error('JSON Parse Error:', parseError);
-      console.error('Attempted to parse:', jsonMatch[0]);
+      recipes = parsed;
+    } catch (e) {
       throw new Error('Failed to parse recipe data');
     }
+
+    const validRecipes = recipes
+      .filter(validateRecipe)
+      .map(recipe => ({
+        ...recipe,
+        id: `${Date.now()}-${Math.random()}`,
+        favorite: false
+      }));
+
+    if (validRecipes.length === 0) {
+      throw new Error('No valid recipes found');
+    }
+
+    return validRecipes;
   } catch (error) {
-    console.error('Recipe suggestion error:', error);
+    console.error('Recipe search failed:', error);
     throw error;
   }
 }
@@ -267,7 +229,9 @@ export async function getCookingAdvice(
   recipe: Recipe | null
 ): Promise<string> {
   try {
-    validateApiKey();
+    if (!API_KEY) {
+      throw new Error('API key is required');
+    }
 
     const response = await fetchWithRetry(
       `${BASE_URL}/chat/completions`,
@@ -280,11 +244,10 @@ export async function getCookingAdvice(
             { role: 'user', content: recipe 
               ? `I'm cooking ${recipe.title}. ${question}`
               : question 
-            },
+            }
           ],
-          temperature: 0.6,
-          max_tokens: 200,
-          presence_penalty: -0.1
+          temperature: 0.7,
+          max_tokens: 200
         })
       }
     );
@@ -292,12 +255,12 @@ export async function getCookingAdvice(
     const data = await response.json();
     
     if (!data.choices?.[0]?.message?.content) {
-      throw new Error('Invalid API response format');
+      throw new Error('Invalid API response');
     }
     
     return data.choices[0].message.content;
   } catch (error) {
-    console.error('Cooking advice error:', error);
-    throw new Error(`Cooking advice failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error('Cooking advice failed:', error);
+    throw error;
   }
 }
