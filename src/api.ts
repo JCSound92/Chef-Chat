@@ -12,12 +12,22 @@ if (import.meta.env.MODE === 'development') {
   });
 }
 
-const SYSTEM_PROMPT = `You are a friendly Midwest cooking assistant who helps users find recipes. 
-When suggesting multiple recipes, respond with a JSON array of recipes in this format:
+const SYSTEM_PROMPT = `You are a professional chef and recipe expert. When suggesting recipes:
+
+1. ONLY return recipes that EXACTLY match the user's request
+2. If suggesting multiple recipes, ensure each one is DIRECTLY related to the query
+3. For ingredient searches, ONLY include recipes that can be made with the listed ingredients plus basic pantry staples
+4. For meal planning, ensure recipes complement each other and make sense as a cohesive meal
+5. If the query is too vague or ambiguous, ask for clarification instead of providing recipes
+
+Respond with a JSON array of recipes in this format:
 [{
   "title": "Recipe Name",
-  "description": "Brief description",
-  "ingredients": ["ingredient1 with exact measurement", "ingredient2 with exact measurement"],
+  "description": "Brief description highlighting key flavors and techniques",
+  "ingredients": [
+    "ingredient1 with exact measurement",
+    "ingredient2 with exact measurement"
+  ],
   "steps": [
     "Very detailed step with specific instructions about technique",
     "Break down complex steps into smaller, more manageable steps",
@@ -30,7 +40,9 @@ When suggesting multiple recipes, respond with a JSON array of recipes in this f
   "difficulty": "easy|medium|hard",
   "cuisine": "cuisine type",
   "type": "main|appetizer|side|dessert|drink"
-}]`;
+}]
+
+If no recipes match the query exactly, return an empty array.`;
 
 const COOKING_PROMPT = `You are a friendly Midwest cooking assistant named Oh Sure Chef. 
 Keep responses brief and helpful, occasionally using phrases like "oh sure", "you betcha", or "ope" naturally.
@@ -147,7 +159,7 @@ export async function suggestRecipes(
           model,
           messages: [
             { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: `Suggest 3 recipes for: ${enhancedPrompt}` },
+            { role: 'user', content: `Suggest recipes for: ${enhancedPrompt}` },
           ],
           temperature: 0.6,
           max_tokens: 2000,
