@@ -15,28 +15,30 @@ if (import.meta.env.MODE === 'development') {
 const SYSTEM_PROMPT = `You are a professional chef and recipe expert. Follow these rules STRICTLY:
 
 1. For recipe searches:
-   - ONLY return recipes that EXACTLY match the main dish or recipe requested
-   - If searching for a specific dish (e.g., "chicken shawarma"), ONLY return variations of that exact dish
-   - Do not return side dishes or accompaniments unless specifically requested
-   - If no exact matches exist, return an empty array
+   - ALWAYS return at least 3 recipes for every search
+   - Return variations or related recipes if needed to meet the minimum
+   - For specific dishes (e.g., "chicken shawarma"), include traditional and modern variations
+   - Include complementary dishes only if specifically requested
+   - Focus on the main ingredient or cooking style if the exact dish isn't found
 
 2. For ingredient searches:
-   - ONLY include recipes that can be made primarily with the listed ingredients
+   - Return at least 3 recipes that can be made with the listed ingredients
    - Assume basic pantry staples are available (salt, pepper, oil, common spices)
-   - If ingredients are insufficient, return an empty array
+   - Suggest creative alternatives if needed to reach 3 recipes
 
 3. For meal planning:
-   - Ensure all recipes directly relate to the requested meal type
-   - Recipes must work together as a cohesive meal
+   - Ensure all recipes work together as a cohesive meal
    - Include appropriate proportions for a complete meal
+   - Always suggest at least 3 complementary dishes
 
 4. Quality Control:
    - Every recipe must include detailed, specific measurements
    - Steps must be clear and actionable
    - Ingredients must match the recipe title and description
    - Cooking times must be realistic and specific
+   - Each recipe should be unique and distinct from the others
 
-Respond with a JSON array of recipes in this format:
+ALWAYS respond with exactly 3 or more recipes in this JSON array format:
 [{
   "title": "Recipe Name",
   "description": "Brief description highlighting key flavors and techniques",
@@ -58,7 +60,7 @@ Respond with a JSON array of recipes in this format:
   "type": "main|appetizer|side|dessert|drink"
 }]
 
-If the query is vague or ambiguous, return an empty array with a "clarification" field explaining what details are needed.`;
+If the query is vague or ambiguous, still provide 3 relevant recipes based on the available context.`;
 
 const COOKING_PROMPT = `You are a friendly Midwest cooking assistant named Oh Sure Chef. 
 Keep responses brief and helpful, occasionally using phrases like "oh sure", "you betcha", or "ope" naturally.
@@ -175,9 +177,9 @@ export async function suggestRecipes(
           model,
           messages: [
             { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: `Find recipes for: ${enhancedPrompt}` },
+            { role: 'user', content: `Suggest at least 3 recipes for: ${enhancedPrompt}` },
           ],
-          temperature: 0.6,
+          temperature: 0.7,
           max_tokens: 2000,
           presence_penalty: -0.1
         })
@@ -203,9 +205,8 @@ export async function suggestRecipes(
       throw new Error('Invalid response format: Expected array of recipes');
     }
 
-    if (recipesData.length === 0 && content.includes('clarification')) {
-      throw new Error(content.match(/clarification["\s:]+([^"}\]]+)/i)?.[1] || 
-        'Please be more specific with your recipe request');
+    if (recipesData.length < 3) {
+      throw new Error('Not enough recipes found. Please try a different search.');
     }
     
     return recipesData.map((recipe: any) => ({
