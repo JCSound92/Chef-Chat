@@ -4,7 +4,7 @@ const API_KEY = import.meta.env.VITE_PERPLEXITY_API_KEY;
 const BASE_URL = 'https://api.perplexity.ai';
 
 // Debug check for environment variables
-if (import.meta.env.MODE === 'development') {
+if (import.meta.env.DEV) {
   console.log('API Environment Check:', {
     hasApiKey: !!API_KEY,
     mode: import.meta.env.MODE,
@@ -12,46 +12,59 @@ if (import.meta.env.MODE === 'development') {
   });
 }
 
-const SYSTEM_PROMPT = `You are a professional recipe expert. Your task is to provide detailed recipes based on user requests.
+const RECIPE_SEARCH_PROMPT = `You are a professional chef specializing in recipe development. Your task is to provide detailed recipes based on specific requests.
 
 CRITICAL: You MUST ALWAYS return EXACTLY 3 recipes in a JSON array.
 
-For ANY search query:
-1. Return EXACTLY 3 recipes that DIRECTLY match the search query
-2. If searching for a specific dish, the FIRST recipe MUST be that exact dish
-3. Additional recipes should be closely related variations or complementary dishes
-4. Include complete ingredients and steps
-5. Use consistent measurements
-6. Keep instructions clear and detailed
+When providing recipes for a specific dish:
+- All 3 recipes MUST be variations of the requested dish
+- Each variation should be unique but authentic to the cuisine
+- Include regional or modern variations when appropriate
+- Maintain the core elements that define the dish
 
 Format your response EXACTLY like this:
 [{
   "title": "Recipe Name",
-  "description": "Brief description of the dish",
-  "ingredients": [
-    "2 cups all-purpose flour",
-    "1 teaspoon salt"
-  ],
-  "steps": [
-    "Detailed step 1 with specific instructions",
-    "Detailed step 2 with temperatures and times"
-  ],
-  "time": 45,
-  "difficulty": "easy",
-  "cuisine": "Italian",
-  "type": "main"
-}]
+  "description": "Brief description highlighting what makes this variation unique",
+  "ingredients": ["exact measurements and ingredients"],
+  "steps": ["detailed, numbered steps with specific techniques"],
+  "time": estimatedMinutes,
+  "difficulty": "easy|medium|hard",
+  "cuisine": "cuisine type",
+  "type": "main|appetizer|side|dessert|drink"
+}]`;
 
-IMPORTANT:
-- ALWAYS return EXACTLY 3 recipes
-- First recipe MUST directly match the search query when applicable
-- ALWAYS use the exact JSON format above
-- NEVER include explanations outside the JSON
-- Ensure all recipes are relevant to the query`;
+const MEAL_PLANNING_PROMPT = `You are a professional meal planning expert. Your task is to suggest recipes that complement an existing meal plan.
 
-const COOKING_PROMPT = `You are a friendly Midwest cooking assistant named Oh Sure Chef. 
-Keep responses brief and helpful, occasionally using phrases like "oh sure", "you betcha", or "ope" naturally.
-Focus on practical cooking advice and tips.`;
+CRITICAL: You MUST ALWAYS return EXACTLY 3 recipes in a JSON array.
+
+When suggesting complementary dishes:
+- Consider flavor profiles of existing dishes
+- Balance the meal with appropriate portions and nutrition
+- Ensure cooking times and difficulty levels are manageable
+- Suggest dishes that can be prepared alongside the existing menu
+
+Use the exact JSON format as specified.`;
+
+const INGREDIENTS_PROMPT = `You are a creative chef specializing in working with available ingredients. Your task is to suggest recipes using only the provided ingredients.
+
+CRITICAL: You MUST ALWAYS return EXACTLY 3 recipes in a JSON array.
+
+When creating recipes from ingredients:
+- Only use the ingredients listed (plus basic pantry staples)
+- Create complete, satisfying dishes
+- Vary the cooking methods and styles
+- Ensure recipes are practical and achievable
+
+Use the exact JSON format as specified.`;
+
+const COOKING_PROMPT = `You are a professional chef providing cooking advice. Be concise, practical, and specific in your guidance.
+
+When answering questions:
+- Focus on technique and best practices
+- Provide specific temperatures, times, and measurements
+- Explain the reasoning behind your advice
+- Keep responses clear and actionable`;
 
 async function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -156,12 +169,22 @@ export async function suggestRecipes(
       throw new Error('API key is required');
     }
 
+    // Determine the search mode based on the prompt and context
+    let systemPrompt = RECIPE_SEARCH_PROMPT;
     let searchPrompt = prompt;
-    if (currentMeal?.length) {
+
+    const isIngredientSearch = prompt.includes(',') || /\b(got|have|using)\b/i.test(prompt);
+    const isMealPlanSearch = (currentMeal && currentMeal.length > 0) || /\b(with|for|accompany|meal|dinner|lunch)\b/i.test(prompt);
+
+    if (isIngredientSearch) {
+      systemPrompt = INGREDIENTS_PROMPT;
+      searchPrompt = `Create recipes using these ingredients: ${prompt}`;
+    } else if (isMealPlanSearch && currentMeal && currentMeal.length > 0) {
+      systemPrompt = MEAL_PLANNING_PROMPT;
       const mealContext = currentMeal
-        .map(recipe => recipe.title)
+        .map(recipe => `${recipe.title} (${recipe.cuisine || 'various'} cuisine)`)
         .join(', ');
-      searchPrompt = `Current meal includes: ${mealContext}. Find recipes to go with: ${prompt}`;
+      searchPrompt = `Current meal includes: ${mealContext}. Suggest recipes that would complement these dishes: ${prompt}`;
     }
 
     const response = await fetchWithRetry(
@@ -171,12 +194,12 @@ export async function suggestRecipes(
         body: JSON.stringify({
           model,
           messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: `Find exactly 3 recipes for: ${searchPrompt}` }
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: searchPrompt }
           ],
-          temperature: 0.7,
+          temperature: 0.8,
           max_tokens: 3000,
-          top_p: 0.9
+          top_p: 0.95
         })
       }
     );
