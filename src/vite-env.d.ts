@@ -1,63 +1,35 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  readonly VITE_PERPLEXITY_API_KEY: string;
+  readonly VITE_PERPLEXITY_API_KEY: string
+  readonly MODE: string
+  readonly DEV: boolean
+  readonly PROD: boolean
+  readonly SSR: boolean
 }
 
 interface ImportMeta {
-  readonly env: ImportMetaEnv;
+  readonly env: ImportMetaEnv
 }
 
-declare module 'react-hot-toast' {
-  import { ReactNode } from 'react';
-
-  interface ToastOptions {
-    id?: string;
-    icon?: ReactNode;
-    duration?: number;
-    position?: ToastPosition;
-    className?: string;
-    style?: React.CSSProperties;
-    ariaProps?: {
-      role?: string;
-      'aria-live'?: string;
-      'aria-atomic'?: string;
-    };
-  }
-
-  type ToastPosition =
-    | 'top-left'
-    | 'top-center'
-    | 'top-right'
-    | 'bottom-left'
-    | 'bottom-center'
-    | 'bottom-right'
-    | 'custom';
-
-  interface Toast {
-    (message: string | ReactNode, options?: ToastOptions): string;
-    success(message: string | ReactNode, options?: ToastOptions): string;
-    error(message: string | ReactNode, options?: ToastOptions): string;
-    loading(message: string | ReactNode, options?: ToastOptions): string;
-    custom<T = any>(
-      render: (t: T) => ReactNode,
-      options?: ToastOptions
-    ): ReactNode;
-    dismiss(toastId?: string): void;
-    remove(toastId?: string): void;
-  }
-
-  const toast: Toast;
-  export default toast;
+declare module 'virtual:*' {
+  const result: any;
+  export default result;
 }
 
-declare module 'global' {
-  interface Window {
-    visualViewport?: {
-      height: number;
-      width: number;
-      addEventListener: (event: string, handler: () => void) => void;
-      removeEventListener: (event: string, handler: () => void) => void;
-    };
+declare module 'react-hot-toast';
+
+// Extend VisualViewport interface instead of redefining it
+declare global {
+  interface VisualViewport {
+    readonly height: number;
+    readonly width: number;
+    readonly scale: number;
+    readonly offsetLeft: number;
+    readonly offsetTop: number;
+    readonly pageLeft: number;
+    readonly pageTop: number;
   }
 }
+
+export {};

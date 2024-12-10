@@ -2,15 +2,6 @@ const API_KEY = import.meta.env.VITE_PERPLEXITY_API_KEY;
 const BASE_URL = 'https://api.perplexity.ai';
 let currentRequest: AbortController | null = null;
 
-// Debug check for environment variables
-if (import.meta.env.DEV) {
-  console.log('API Environment Check:', {
-    hasApiKey: !!API_KEY,
-    mode: import.meta.env.MODE,
-    baseUrl: BASE_URL
-  });
-}
-
 async function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -71,7 +62,7 @@ export async function fetchWithRetry(
     }
     
     return response;
-  } catch (error) {
+  } catch (error: any) {
     if (error.name === 'AbortError') {
       throw new Error('Request cancelled');
     }
