@@ -40,12 +40,6 @@ export async function fetchWithRetry(
       signal: currentRequest.signal
     };
 
-    console.log('Making API request:', {
-      url,
-      method: options.method,
-      headers: fetchOptions.headers
-    });
-
     const response = await fetch(url, fetchOptions);
     currentRequest = null;
     

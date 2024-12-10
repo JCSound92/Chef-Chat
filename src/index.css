@@ -80,7 +80,6 @@
     @apply flex flex-col min-h-full;
   }
 
-  /* Center content for specific views */
   .home-container, .cooking-container {
     @apply flex items-center justify-center min-h-full;
   }
@@ -138,7 +137,7 @@
 
   /* Hide scrollbar for IE, Edge and Firefox */
   .no-scrollbar {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
+    -ms-overflow-style: none;  /* Firefox */
+    scrollbar-width: none;  /* IE and Edge */
   }
 }

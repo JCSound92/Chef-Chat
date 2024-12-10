@@ -13,7 +13,6 @@ export function useKeyboardVisibility() {
       return;
     }
 
-    let lastHeight = viewport.height;
     const handler = () => {
       const offsetHeight = window.innerHeight - viewport.height;
       if (offsetHeight > 150) { // Threshold to avoid false positives
@@ -29,7 +28,6 @@ export function useKeyboardVisibility() {
         );
         setIsKeyboardVisible(false);
       }
-      lastHeight = viewport.height;
     };
 
     viewport.addEventListener('resize', handler);

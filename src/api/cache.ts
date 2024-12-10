@@ -1,7 +1,7 @@
 import { Recipe } from '../types';
 import { debounce } from '../utils/debounce';
 
-export const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 // Cache for storing recent API responses
 const responseCache = new Map<string, {
