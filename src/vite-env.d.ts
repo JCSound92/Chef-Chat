@@ -50,3 +50,14 @@ declare module 'react-hot-toast' {
   const toast: Toast;
   export default toast;
 }
+
+declare module 'global' {
+  interface Window {
+    visualViewport?: {
+      height: number;
+      width: number;
+      addEventListener: (event: string, handler: () => void) => void;
+      removeEventListener: (event: string, handler: () => void) => void;
+    };
+  }
+}

@@ -4,7 +4,7 @@ const API_KEY = import.meta.env.VITE_PERPLEXITY_API_KEY;
 const BASE_URL = 'https://api.perplexity.ai';
 
 // Debug check for environment variables
-if (import.meta.env.DEV) {
+if (import.meta.env.MODE === 'development') {
   console.log('API Environment Check:', {
     hasApiKey: !!API_KEY,
     mode: import.meta.env.MODE,

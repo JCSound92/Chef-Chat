@@ -28,6 +28,16 @@
   #root {
     @apply h-full flex flex-col;
   }
+
+  /* Prevent content from being hidden behind keyboard on iOS */
+  @supports (-webkit-touch-callout: none) {
+    body {
+      height: -webkit-fill-available;
+    }
+    #root {
+      height: -webkit-fill-available;
+    }
+  }
 }
 
 /* Component styles */
@@ -51,7 +61,8 @@
   .main-layout {
     @apply flex flex-col flex-1;
     margin-top: var(--nav-height);
-    margin-bottom: var(--chat-height);
+    margin-bottom: calc(var(--chat-height) + var(--keyboard-height));
+    transition: margin-bottom 0.3s ease-out;
   }
 
   .content-container {
@@ -59,7 +70,7 @@
     overscroll-behavior-y: contain;
     scroll-behavior: smooth;
     will-change: scroll-position;
-    height: calc(100vh - var(--nav-height) - var(--chat-height));
+    height: calc(100vh - var(--nav-height) - var(--chat-height) - var(--keyboard-height));
   }
 
   .page-container {

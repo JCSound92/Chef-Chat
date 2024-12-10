@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Search, Loader2, Send } from 'lucide-react';
 import { useStore } from '../store';
@@ -6,11 +6,13 @@ import { suggestRecipes, getCookingAdvice } from '../api';
 import toast from 'react-hot-toast';
 import { debounce } from '../utils/debounce';
 import { CookingCoachResponse } from './CookingCoachResponse';
+import { useKeyboardVisibility } from '../hooks/useKeyboardVisibility';
 
 export function ChatControl() {
   const [input, setInput] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
+  const { isKeyboardVisible } = useKeyboardVisibility();
   
   // Don't show chat on home page or shopping list
   if (location.pathname === '/' || location.pathname === '/shopping-list') {
@@ -43,7 +45,7 @@ export function ChatControl() {
   const isMealPlanMode = location.pathname === '/current-meal';
 
   // Clear cooking chat when leaving cooking mode
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isCookingMode && chatContexts.cooking) {
       clearChatHistory('cooking');
     }
@@ -216,7 +218,7 @@ export function ChatControl() {
   return (
     <>
       {isCookingMode && chatContexts.cooking && <CookingCoachResponse />}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 shadow-lg chat-input-container">
+      <div className={`chat-input-container ${isKeyboardVisible ? 'keyboard-visible' : ''}`}>
         <form onSubmit={handleSubmit} className="max-w-3xl mx-auto p-4">
           <div className="relative flex items-center gap-3">
             {isLoading ? (
