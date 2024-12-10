@@ -33,9 +33,11 @@
   @supports (-webkit-touch-callout: none) {
     body {
       height: -webkit-fill-available;
+      min-height: -webkit-fill-available;
     }
     #root {
       height: -webkit-fill-available;
+      min-height: -webkit-fill-available;
     }
   }
 }
@@ -61,8 +63,8 @@
   .main-layout {
     @apply flex flex-col flex-1;
     margin-top: var(--nav-height);
-    margin-bottom: calc(var(--chat-height) + var(--keyboard-height));
-    transition: margin-bottom 0.3s ease-out;
+    padding-bottom: calc(var(--chat-height) + var(--keyboard-height));
+    transition: padding-bottom 0.3s ease-out;
   }
 
   .content-container {
@@ -70,7 +72,8 @@
     overscroll-behavior-y: contain;
     scroll-behavior: smooth;
     will-change: scroll-position;
-    height: calc(100vh - var(--nav-height) - var(--chat-height) - var(--keyboard-height));
+    height: calc(100% - var(--keyboard-height));
+    transition: height 0.3s ease-out;
   }
 
   .page-container {
@@ -111,6 +114,10 @@
   .chat-input-container.keyboard-visible {
     position: fixed;
     bottom: var(--keyboard-height);
+  }
+
+  .content-container {
+    padding-bottom: var(--keyboard-height);
   }
 }
 
