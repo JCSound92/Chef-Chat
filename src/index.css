@@ -85,6 +85,33 @@
   .page-header {
     @apply flex-shrink-0 bg-white border-b border-gray-100 px-8 py-4 sticky top-0 z-10;
   }
+
+  /* Keyboard visibility adjustments */
+  .mb-keyboard {
+    margin-bottom: calc(var(--keyboard-height) + var(--chat-height));
+  }
+}
+
+/* Chat container styles */
+.chat-input-container {
+  @apply fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 shadow-lg z-50;
+  height: var(--chat-height);
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom));
+  transform: translateZ(0);
+  transition: transform 0.3s ease-out;
+  will-change: transform;
+}
+
+/* iOS keyboard handling */
+@supports (-webkit-touch-callout: none) {
+  .chat-input-container {
+    transform: translate3d(0, var(--keyboard-height, 0), 0);
+  }
+
+  .chat-input-container.keyboard-visible {
+    position: fixed;
+    bottom: var(--keyboard-height);
+  }
 }
 
 /* Utility styles */
@@ -106,22 +133,5 @@
   .no-scrollbar {
     -ms-overflow-style: none;  /* IE and Edge */
     scrollbar-width: none;  /* Firefox */
-  }
-}
-
-/* Chat container styles */
-.chat-input-container {
-  @apply fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 shadow-lg z-50;
-  height: var(--chat-height);
-  padding-bottom: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom));
-  transform: translateZ(0);
-  transition: transform 0.3s ease-out;
-  will-change: transform;
-}
-
-/* iOS specific styles */
-@supports (-webkit-touch-callout: none) {
-  .chat-input-container {
-    transform: translate3d(0, var(--keyboard-height, 0), 0);
   }
 }

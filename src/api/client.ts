@@ -13,13 +13,15 @@ export async function fetchWithRetry(
   backoff = 500
 ): Promise<Response> {
   try {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json'
-    };
-
-    if (API_KEY) {
-      headers['Authorization'] = `Bearer ${API_KEY}`;
+    // Ensure API key is present
+    if (!API_KEY) {
+      throw new Error('API key is required');
     }
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${API_KEY}`
+    };
 
     // Cancel any pending request
     if (currentRequest) {
@@ -32,10 +34,17 @@ export async function fetchWithRetry(
     const fetchOptions: RequestInit = {
       ...options,
       headers: {
-        ...headers
+        ...headers,
+        ...(options.headers || {})
       },
       signal: currentRequest.signal
     };
+
+    console.log('Making API request:', {
+      url,
+      method: options.method,
+      headers: fetchOptions.headers
+    });
 
     const response = await fetch(url, fetchOptions);
     currentRequest = null;
@@ -64,10 +73,16 @@ export async function fetchWithRetry(
     return response;
   } catch (error: any) {
     if (error.name === 'AbortError') {
+      console.log('Request cancelled');
       throw new Error('Request cancelled');
     }
     
-    if (retries === 0) throw error;
+    if (retries === 0) {
+      console.error('API request failed after retries:', error);
+      throw error;
+    }
+
+    console.log(`Retrying request after ${backoff}ms...`);
     await delay(backoff);
     return fetchWithRetry(url, options, retries - 1, backoff * 2);
   }

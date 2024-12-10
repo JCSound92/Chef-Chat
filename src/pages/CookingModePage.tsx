@@ -5,9 +5,11 @@ import { useStore } from '../store';
 import { Timer as TimerComponent } from '../components/Timer';
 import { TimerPicker } from '../components/TimerPicker';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useKeyboardVisibility } from '../hooks/useKeyboardVisibility';
 
 export function CookingModePage() {
   const navigate = useNavigate();
+  const { isKeyboardVisible } = useKeyboardVisibility();
   const { 
     currentMeal,
     startTimer,
@@ -99,7 +101,7 @@ export function CookingModePage() {
       </div>
 
       {/* Content */}
-      <div className="pt-32 pb-8 px-4">
+      <div className={`pt-32 pb-8 px-4 ${isKeyboardVisible ? 'mb-keyboard' : ''}`}>
         <div className="max-w-3xl mx-auto">
           <div className="card space-y-4">
             <h2 className="text-2xl font-bold text-[#FF6B6B]">
