@@ -1,7 +1,35 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X } from 'lucide-react';
-import { useOnboarding } from '../hooks/useOnboarding.ts';
+import { X, ChefHat, Search, Utensils, ShoppingCart, CookingPot } from 'lucide-react';
+import { useOnboarding } from '../hooks/useOnboarding';
+
+const FEATURES = [
+  {
+    icon: Search,
+    title: "Find Recipes",
+    description: "Search for recipes by name, ingredients, or meal type"
+  },
+  {
+    icon: Utensils,
+    title: "Plan Your Meal",
+    description: "Create complete meal plans with multiple courses"
+  },
+  {
+    icon: ShoppingCart,
+    title: "Shopping Lists",
+    description: "Automatically generate shopping lists from your recipes"
+  },
+  {
+    icon: CookingPot,
+    title: "Cooking Mode",
+    description: "Step-by-step instructions and timers while you cook"
+  },
+  {
+    icon: ChefHat,
+    title: "Ask Chef",
+    description: "Get cooking advice and recipe suggestions"
+  }
+];
 
 export function OnboardingModal() {
   const { hasSeenOnboarding, completeOnboarding } = useOnboarding();
@@ -25,8 +53,16 @@ export function OnboardingModal() {
           className="m-4 md:m-20 bg-white rounded-2xl"
         >
           <div className="p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold">Welcome to Chef Chat!</h2>
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-[#e05f3e] rounded-xl flex items-center justify-center">
+                  <ChefHat className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold">Welcome to Chef Chat!</h2>
+                  <p className="text-gray-500">Your personal cooking assistant</p>
+                </div>
+              </div>
               <button
                 onClick={completeOnboarding}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -35,18 +71,29 @@ export function OnboardingModal() {
               </button>
             </div>
             
-            <div className="aspect-video w-full max-w-3xl mx-auto rounded-xl overflow-hidden bg-black">
-              <iframe 
-                src="https://share.descript.com/embed/Nk545nQglDa" 
-                width="100%" 
-                height="100%" 
-                frameBorder="0" 
-                allowFullScreen
-                title="Chef Chat Tutorial"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              {FEATURES.map((feature, index) => (
+                <motion.div
+                  key={feature.title}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className="flex items-start gap-4 p-4 rounded-xl bg-gray-50"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-[#e05f3e] flex items-center justify-center flex-shrink-0">
+                    {React.createElement(feature.icon, {
+                      className: "w-5 h-5 text-white"
+                    })}
+                  </div>
+                  <div>
+                    <h3 className="font-semibold mb-1">{feature.title}</h3>
+                    <p className="text-sm text-gray-600">{feature.description}</p>
+                  </div>
+                </motion.div>
+              ))}
             </div>
 
-            <div className="mt-6 text-center">
+            <div className="text-center">
               <button
                 onClick={completeOnboarding}
                 className="btn btn-primary"
