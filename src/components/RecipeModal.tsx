@@ -46,16 +46,16 @@ export function RecipeModal({ onClose }: RecipeModalProps) {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: "100%" }}
           transition={{ type: "spring", damping: 25, stiffness: 200 }}
-          className="fixed inset-x-0 bottom-0 top-4 md:inset-20 bg-white rounded-t-2xl md:rounded-2xl overflow-hidden"
+          className="fixed inset-x-0 bottom-0 top-16 md:inset-20 bg-white rounded-t-2xl md:rounded-2xl overflow-hidden"
           onClick={e => e.stopPropagation()}
         >
           <div 
             ref={modalRef}
             className="absolute inset-0 overflow-y-auto overscroll-contain"
           >
-            {/* Header */}
-            <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-100">
-              <div className="p-6">
+            <div className="p-6">
+              {/* Header */}
+              <div className="mb-8">
                 <div className="flex items-center gap-4 mb-6">
                   <Utensils className="w-12 h-12 text-[#e05f3e]" />
                   <h1 className="text-4xl font-bold text-gray-900">{currentRecipe.title}</h1>
@@ -95,10 +95,8 @@ export function RecipeModal({ onClose }: RecipeModalProps) {
                   </button>
                 </div>
               </div>
-            </div>
 
-            {/* Content */}
-            <div className="p-6">
+              {/* Recipe Info */}
               <div className="mb-8">
                 {currentRecipe.description && (
                   <p className="text-gray-600 mb-4">{currentRecipe.description}</p>
@@ -114,6 +112,7 @@ export function RecipeModal({ onClose }: RecipeModalProps) {
                 </div>
               </div>
 
+              {/* Ingredients */}
               <div className="bg-gray-50 rounded-xl p-6 mb-8">
                 <h2 className="text-xl font-bold mb-4">Ingredients</h2>
                 <ul className="space-y-2">
@@ -129,6 +128,7 @@ export function RecipeModal({ onClose }: RecipeModalProps) {
                 </ul>
               </div>
 
+              {/* Steps */}
               <div>
                 <h2 className="text-xl font-bold mb-6">Instructions</h2>
                 <ol className="space-y-6">
