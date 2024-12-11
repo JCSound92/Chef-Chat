@@ -1,21 +1,19 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { AppState, Recipe, ShoppingListItem, MealPlan, ChatMessage } from './types';
-import { consolidateIngredients, parseIngredient, formatIngredient } from './utils/ingredientParser';
+import type { AppState, Recipe, ShoppingListItem, ChatMessage } from './types';
+import { consolidateIngredients } from './utils/ingredientParser';
 
 const MAX_CHAT_HISTORY = 100;
 const MAX_RECENT_RECIPES = 20;
+const MAX_SEARCH_HISTORY = 10;
 
 const migrate = (persistedState: any, version: number): AppState => {
   if (version === 0) {
-    const chatHistory = persistedState.chatHistory || [];
     return {
       ...persistedState,
+      searchHistory: [],
       chatContexts: {
-        chef: chatHistory.map((msg: any) => ({
-          ...msg,
-          context: 'chef'
-        })),
+        chef: persistedState.chatHistory || [],
         cooking: null
       },
       cookingState: {
@@ -31,7 +29,7 @@ const migrate = (persistedState: any, version: number): AppState => {
 export const useStore = create<AppState>()(
   persist(
     (set, get) => ({
-      // State
+      // Initial State
       recipes: [],
       filteredRecipes: [],
       suggestions: [],
@@ -52,6 +50,7 @@ export const useStore = create<AppState>()(
         cooking: null
       },
       lastRecipeRequest: '',
+      searchHistory: [],
       currentMeal: {
         recipes: [],
         status: 'building',
@@ -75,241 +74,128 @@ export const useStore = create<AppState>()(
       
       setSuggestions: (recipes, searchQuery = '', append = false) => {
         set((state) => {
-          // Add recipes to recent list when they're suggested
           const existingIds = new Set(state.recipes.map(r => r.id));
           const newRecipes = recipes.filter(r => !existingIds.has(r.id));
           
+          const searchHistory = searchQuery 
+            ? [
+                { 
+                  query: searchQuery, 
+                  mode: state.searchMode, 
+                  timestamp: Date.now() 
+                },
+                ...state.searchHistory.filter(h => h.query !== searchQuery)
+              ].slice(0, MAX_SEARCH_HISTORY)
+            : state.searchHistory;
+
           return {
             suggestions: append ? [...state.suggestions, ...recipes] : recipes,
             lastSearch: searchQuery || state.lastSearch,
             lastRecipeRequest: searchQuery || state.lastRecipeRequest,
-            // Add new recipes to the recent list
+            searchHistory,
             recipes: [...newRecipes, ...state.recipes].slice(0, MAX_RECENT_RECIPES)
           };
         });
       },
-      
+
       setSearchMode: (mode) => set({ searchMode: mode }),
       setChatMode: (mode) => set({ chatMode: mode }),
+      clearSearch: () => set({ suggestions: [], lastSearch: '', lastRecipeRequest: '' }),
+      restoreSearch: (query, mode) => set({ searchMode: mode, lastSearch: query, lastRecipeRequest: query }),
+      setCurrentRecipe: (recipe) => set({ currentRecipe: recipe }),
       
-      addChatMessage: (message, type, context) => set((state) => {
-        const newMessage = {
-          id: `${Date.now()}-${Math.random()}`,
-          message,
-          type,
-          timestamp: new Date(),
-          context
-        };
+      toggleFavorite: (id) => set((state) => ({
+        recipes: state.recipes.map(recipe =>
+          recipe.id === id ? { ...recipe, favorite: !recipe.favorite } : recipe
+        ),
+        filteredRecipes: state.filteredRecipes.map(recipe =>
+          recipe.id === id ? { ...recipe, favorite: !recipe.favorite } : recipe
+        ),
+        suggestions: state.suggestions.map(recipe =>
+          recipe.id === id ? { ...recipe, favorite: !recipe.favorite } : recipe
+        )
+      })),
 
-        if (context === 'cooking') {
-          return {
-            chatContexts: {
-              ...state.chatContexts,
-              cooking: newMessage
-            }
-          };
-        }
-
-        return {
-          chatContexts: {
-            ...state.chatContexts,
-            chef: [...state.chatContexts.chef.slice(-MAX_CHAT_HISTORY), newMessage]
-          }
-        };
-      }),
-
-      clearChatHistory: (context) => set((state) => ({
-        chatContexts: {
-          ...state.chatContexts,
-          [context]: context === 'chef' ? [] : null
+      addToCurrentMeal: (recipe) => set((state) => ({
+        currentMeal: {
+          ...state.currentMeal,
+          recipes: [...state.currentMeal.recipes, recipe]
         }
       })),
 
-      clearSearch: () => set({ 
-        suggestions: [], 
-        lastSearch: '',
-        lastRecipeRequest: ''
+      removeFromCurrentMeal: (id) => set((state) => ({
+        currentMeal: {
+          ...state.currentMeal,
+          recipes: state.currentMeal.recipes.filter(recipe => recipe.id !== id)
+        }
+      })),
+
+      clearCurrentMeal: () => set({
+        currentMeal: {
+          recipes: [],
+          status: 'building',
+          servings: 4,
+          originalRecipes: []
+        }
       }),
 
-      setCurrentRecipe: (recipe) => {
-        if (recipe) {
-          set((state) => {
-            // Add to recent recipes if not already present
-            const existingIndex = state.recipes.findIndex(r => r.id === recipe.id);
-            const updatedRecipes = [...state.recipes];
-            
-            if (existingIndex !== -1) {
-              // Move to top if already exists
-              updatedRecipes.splice(existingIndex, 1);
-            }
-            updatedRecipes.unshift(recipe);
-            
-            return {
-              currentRecipe: recipe,
-              recipes: updatedRecipes.slice(0, MAX_RECENT_RECIPES)
-            };
-          });
-        } else {
-          set({ currentRecipe: null });
-        }
+      adjustPortions: (servings) => {
+        set((state) => {
+          if (!state.currentRecipe) return state;
+
+          const recipe = state.currentRecipe;
+          const originalServings = recipe.currentServings || 4;
+          const ratio = servings / originalServings;
+
+          const adjustedRecipe: Recipe = {
+            ...recipe,
+            currentServings: servings,
+            ingredients: recipe.ingredients.map(ingredient => {
+              const match = ingredient.match(/^(\d*\.?\d+)\s+(.+)$/);
+              if (!match) return ingredient;
+              const [, amount, rest] = match;
+              const newAmount = (parseFloat(amount) * ratio).toFixed(1);
+              return `${newAmount} ${rest}`;
+            })
+          };
+
+          return { currentRecipe: adjustedRecipe };
+        });
       },
 
-      toggleFavorite: (recipeId) => set((state) => ({
-        recipes: state.recipes.map(r => 
-          r.id === recipeId ? { ...r, favorite: !r.favorite } : r
-        ),
-        suggestions: state.suggestions.map(r =>
-          r.id === recipeId ? { ...r, favorite: !r.favorite } : r
-        ),
-        currentRecipe: state.currentRecipe?.id === recipeId
-          ? { ...state.currentRecipe, favorite: !state.currentRecipe.favorite }
-          : state.currentRecipe
-      })),
-
-      adjustPortions: (servings) => set((state) => {
-        if (!state.currentRecipe?.originalIngredients) return state;
-        const ratio = servings / (state.currentRecipe.currentServings || 4);
-        const updatedIngredients = state.currentRecipe.originalIngredients.map(ingredient => {
-          const parsed = parseIngredient(ingredient);
-          if (parsed) {
-            parsed.amount *= ratio;
-            return formatIngredient(parsed);
-          }
-          return ingredient;
-        });
-
-        return {
-          currentRecipe: {
-            ...state.currentRecipe,
-            currentServings: servings,
-            ingredients: updatedIngredients
-          }
-        };
-      }),
-
-      adjustMealPortions: (servings) => set((state) => {
-        const ratio = servings / state.currentMeal.servings;
-        const updatedRecipes = state.currentMeal.recipes.map(recipe => ({
-          ...recipe,
-          currentServings: servings,
-          ingredients: recipe.originalIngredients?.map(ingredient => {
-            const parsed = parseIngredient(ingredient);
-            if (parsed) {
-              parsed.amount *= ratio;
-              return formatIngredient(parsed);
-            }
-            return ingredient;
-          }) || recipe.ingredients
-        }));
-
-        return {
-          currentMeal: {
-            ...state.currentMeal,
-            servings,
-            recipes: updatedRecipes
-          }
-        };
-      }),
-
-      addToCurrentMeal: (recipe) => {
+      adjustMealPortions: (servings) => {
         set((state) => {
-          // Add to recent recipes when adding to meal
-          const existingIndex = state.recipes.findIndex(r => r.id === recipe.id);
-          const updatedRecipes = [...state.recipes];
-          
-          if (existingIndex !== -1) {
-            updatedRecipes.splice(existingIndex, 1);
-          }
-          updatedRecipes.unshift(recipe);
-          
+          const ratio = servings / state.currentMeal.servings;
+          const adjustedRecipes = state.currentMeal.recipes.map(recipe => ({
+            ...recipe,
+            currentServings: servings,
+            ingredients: recipe.ingredients.map(ingredient => {
+              const match = ingredient.match(/^(\d*\.?\d+)\s+(.+)$/);
+              if (!match) return ingredient;
+              const [, amount, rest] = match;
+              const newAmount = (parseFloat(amount) * ratio).toFixed(1);
+              return `${newAmount} ${rest}`;
+            })
+          }));
+
           return {
             currentMeal: {
               ...state.currentMeal,
-              recipes: [...state.currentMeal.recipes, {
-                ...recipe,
-                originalIngredients: [...recipe.ingredients],
-                currentServings: state.currentMeal.servings
-              }]
-            },
-            recipes: updatedRecipes.slice(0, MAX_RECENT_RECIPES)
+              servings,
+              recipes: adjustedRecipes
+            }
           };
         });
       },
 
-      removeFromCurrentMeal: (recipeId) => set((state) => ({
-        currentMeal: {
-          ...state.currentMeal,
-          recipes: state.currentMeal.recipes.filter(r => r.id !== recipeId)
-        }
-      })),
-
-      clearCurrentMeal: () => set((state) => ({
-        currentMeal: {
-          ...state.currentMeal,
-          recipes: [],
-          status: 'building'
-        }
-      })),
-
-      startCooking: () => set({
-        cookingState: {
-          isActive: true,
-          currentStepIndex: 0,
-          currentRecipeIndex: 0
-        }
-      }),
-
-      stopCooking: () => set({
-        cookingState: {
-          isActive: false,
-          currentStepIndex: 0,
-          currentRecipeIndex: 0
-        }
-      }),
-
-      setCurrentStep: (stepIndex) => set((state) => ({
-        cookingState: {
-          ...state.cookingState,
-          currentStepIndex: stepIndex
-        }
-      })),
-
-      setCurrentRecipeIndex: (recipeIndex) => set((state) => ({
-        cookingState: {
-          ...state.cookingState,
-          currentRecipeIndex: recipeIndex
-        }
-      })),
-
-      generateShoppingList: () => set((state) => {
-        const allIngredients = state.currentMeal.recipes.flatMap(r => r.ingredients);
-        const consolidated = consolidateIngredients(allIngredients);
-        
-        return {
-          currentMeal: {
-            ...state.currentMeal,
-            status: 'shopping'
-          },
-          shoppingList: [
-            ...state.shoppingList,
-            ...consolidated.map(item => ({
-              id: `${Date.now()}-${Math.random()}`,
-              name: item,
-              recipeId: null,
-              completed: false
-            }))
-          ]
-        };
-      }),
-
-      addToShoppingList: (items, recipeId = null) => set((state) => ({
+      addToShoppingList: (ingredients, recipeId) => set((state) => ({
         shoppingList: [
           ...state.shoppingList,
-          ...items.map(item => ({
+          ...ingredients.map(ingredient => ({
             id: `${Date.now()}-${Math.random()}`,
-            name: item,
-            recipeId,
-            completed: false
+            name: ingredient,
+            completed: false,
+            recipeId
           }))
         ]
       })),
@@ -324,97 +210,122 @@ export const useStore = create<AppState>()(
         )
       })),
 
+      clearShoppingList: () => set({ shoppingList: [] }),
+
       clearCompletedItems: () => set((state) => ({
         shoppingList: state.shoppingList.filter(item => !item.completed)
       })),
 
-      clearShoppingList: () => set({ shoppingList: [] }),
+      startTimer: (seconds) => set({ isTimerActive: true, timerSeconds: seconds }),
+      stopTimer: () => set({ isTimerActive: false, timerSeconds: 0 }),
+      decrementTimer: () => set((state) => ({ timerSeconds: Math.max(0, state.timerSeconds - 1) })),
 
-      setShowMenu: (show) => set({ showMenu: show }),
-      setShowRecipePanel: (show) => set({ showRecipePanel: show }),
-
-      filterRecipes: (query) => set((state) => {
-        if (!query.trim()) return { filteredRecipes: state.recipes };
-        const searchTerms = query.toLowerCase().split(' ');
-        return {
-          filteredRecipes: state.recipes.filter(recipe => {
-            const searchText = `${recipe.title} ${recipe.description || ''} ${recipe.cuisine || ''} ${
-              recipe.type || ''} ${recipe.ingredients.join(' ')}`.toLowerCase();
-            return searchTerms.every(term => searchText.includes(term));
-          })
-        };
-      }),
-
-      startTimer: (seconds) => set({
-        isTimerActive: true,
-        timerSeconds: seconds
-      }),
-
-      stopTimer: () => set({
-        isTimerActive: false,
-        timerSeconds: 0
-      }),
-
-      decrementTimer: () => set((state) => ({
-        timerSeconds: Math.max(0, state.timerSeconds - 1)
+      startCooking: () => set((state) => ({
+        cookingState: {
+          isActive: true,
+          currentStepIndex: 0,
+          currentRecipeIndex: 0
+        },
+        currentMeal: {
+          ...state.currentMeal,
+          status: 'cooking'
+        }
       })),
 
-      setVoiceState: (newState) => set((state) => ({
-        voiceState: { ...state.voiceState, ...newState }
+      stopCooking: () => set((state) => ({
+        cookingState: {
+          isActive: false,
+          currentStepIndex: 0,
+          currentRecipeIndex: 0
+        },
+        currentMeal: {
+          ...state.currentMeal,
+          status: 'completed'
+        }
       })),
 
-      createMealPlan: (name) => set((state) => ({
-        mealPlans: [
-          ...state.mealPlans,
-          {
-            id: `${Date.now()}-${Math.random()}`,
-            name,
-            recipes: [],
-            createdAt: new Date()
-          }
-        ]
+      setCurrentStep: (step) => set((state) => ({
+        cookingState: {
+          ...state.cookingState,
+          currentStepIndex: step
+        }
       })),
 
-      deleteMealPlan: (id) => set((state) => ({
-        mealPlans: state.mealPlans.filter(plan => plan.id !== id)
+      setCurrentRecipeIndex: (index) => set((state) => ({
+        cookingState: {
+          ...state.cookingState,
+          currentRecipeIndex: index
+        }
       })),
 
-      setCurrentMealPlan: (plan) => set((state) => ({
-        currentMeal: plan ? {
-          recipes: plan.recipes,
-          status: 'building',
-          servings: 4,
-          originalRecipes: plan.recipes
-        } : state.currentMeal
-      })),
-
-      removeRecipeFromMealPlan: (planId, recipeId) => set((state) => ({
-        mealPlans: state.mealPlans.map(plan =>
-          plan.id === planId
-            ? { ...plan, recipes: plan.recipes.filter(r => r.id !== recipeId) }
-            : plan
+      filterRecipes: (query) => set((state) => ({
+        filteredRecipes: state.recipes.filter(recipe =>
+          recipe.title.toLowerCase().includes(query.toLowerCase()) ||
+          recipe.description?.toLowerCase().includes(query.toLowerCase())
         )
       })),
 
-      addMealPlanToShoppingList: (planId) => set((state) => {
-        const plan = state.mealPlans.find(p => p.id === planId);
-        if (!plan) return state;
-
-        const allIngredients = plan.recipes.flatMap(r => r.ingredients);
-        const consolidated = consolidateIngredients(allIngredients);
-
-        return {
-          shoppingList: [
-            ...state.shoppingList,
-            ...consolidated.map(item => ({
-              id: `${Date.now()}-${Math.random()}`,
-              name: item,
-              recipeId: null,
-              completed: false
-            }))
-          ]
+      addChatMessage: (message, type, context) => {
+        const newMessage: ChatMessage = {
+          id: `${Date.now()}-${Math.random()}`,
+          message,
+          type,
+          context,
+          timestamp: Date.now()
         };
-      })
+
+        set((state) => {
+          if (context === 'cooking') {
+            return {
+              chatContexts: {
+                ...state.chatContexts,
+                cooking: newMessage
+              }
+            };
+          }
+
+          const updatedHistory = [
+            ...state.chatContexts.chef,
+            newMessage
+          ].slice(-MAX_CHAT_HISTORY);
+
+          return {
+            chatContexts: {
+              ...state.chatContexts,
+              chef: updatedHistory
+            }
+          };
+        });
+      },
+
+      clearChatHistory: (context) => set((state) => ({
+        chatContexts: {
+          ...state.chatContexts,
+          [context]: context === 'cooking' ? null : []
+        }
+      })),
+
+      generateShoppingList: () => {
+        set((state) => {
+          const allIngredients = state.currentMeal.recipes.flatMap(recipe => recipe.ingredients);
+          const consolidatedIngredients = consolidateIngredients(allIngredients);
+
+          const newItems: ShoppingListItem[] = consolidatedIngredients.map(ingredient => ({
+            id: `${Date.now()}-${Math.random()}`,
+            name: ingredient,
+            completed: false,
+            recipeId: undefined
+          }));
+
+          return {
+            currentMeal: {
+              ...state.currentMeal,
+              status: 'completed'
+            },
+            shoppingList: [...state.shoppingList, ...newItems]
+          };
+        });
+      }
     }),
     {
       name: 'recipe-storage',
@@ -429,6 +340,7 @@ export const useStore = create<AppState>()(
         suggestions: state.suggestions,
         searchMode: state.searchMode,
         chatContexts: state.chatContexts,
+        searchHistory: state.searchHistory,
         mealPlans: state.mealPlans,
         cookingState: state.cookingState
       })

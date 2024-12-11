@@ -11,6 +11,7 @@ import { ShoppingListPage } from './pages/ShoppingListPage';
 import { CurrentMeal } from './components/CurrentMeal';
 import { CookingModePage } from './pages/CookingModePage';
 import { Toast } from './components/Toast';
+import { OnboardingModal } from './components/OnboardingModal';
 
 // Store scroll positions for each route
 const scrollPositions = new Map<string, number>();
@@ -109,6 +110,7 @@ function AppContent() {
       </div>
       {showChat && <ChatControl />}
       <Toast />
+      <OnboardingModal />
     </div>
   );
 }

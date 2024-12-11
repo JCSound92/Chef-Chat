@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Heart, Utensils, Clock, Users } from 'lucide-react';
 import { useStore } from '../store';
@@ -10,12 +10,20 @@ interface RecipeModalProps {
 
 export function RecipeModal({ onClose }: RecipeModalProps) {
   const { currentRecipe, toggleFavorite, addToCurrentMeal } = useStore();
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (modalRef.current) {
+      modalRef.current.scrollTo(0, 0);
+    }
+  }, [currentRecipe?.id]);
 
   if (!currentRecipe) return null;
 
   const handleAddToMeal = () => {
     addToCurrentMeal(currentRecipe);
     onClose();
+    toast.success('Added to tonight\'s meal');
   };
 
   const handleFavoriteClick = (e: React.MouseEvent) => {
@@ -34,16 +42,20 @@ export function RecipeModal({ onClose }: RecipeModalProps) {
         onClick={onClose}
       >
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: "100%" }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 20 }}
-          className="m-4 md:m-20 bg-white rounded-2xl"
+          exit={{ opacity: 0, y: "100%" }}
+          transition={{ type: "spring", damping: 25, stiffness: 200 }}
+          className="relative mx-auto my-4 md:my-20 bg-white rounded-t-2xl md:rounded-2xl max-w-4xl"
           onClick={e => e.stopPropagation()}
         >
-          <div className="p-6 pb-32">
-            <div className="max-w-4xl mx-auto">
-              {/* Header */}
-              <div className="mb-8">
+          <div 
+            ref={modalRef}
+            className="overflow-y-auto overscroll-contain"
+          >
+            {/* Header */}
+            <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-100">
+              <div className="p-6">
                 <div className="flex items-center gap-4 mb-6">
                   <Utensils className="w-12 h-12 text-[#e05f3e]" />
                   <h1 className="text-4xl font-bold text-gray-900">{currentRecipe.title}</h1>
@@ -83,8 +95,10 @@ export function RecipeModal({ onClose }: RecipeModalProps) {
                   </button>
                 </div>
               </div>
+            </div>
 
-              {/* Recipe Info */}
+            {/* Content */}
+            <div className="p-6">
               <div className="mb-8">
                 {currentRecipe.description && (
                   <p className="text-gray-600 mb-4">{currentRecipe.description}</p>
@@ -100,7 +114,6 @@ export function RecipeModal({ onClose }: RecipeModalProps) {
                 </div>
               </div>
 
-              {/* Ingredients */}
               <div className="bg-gray-50 rounded-xl p-6 mb-8">
                 <h2 className="text-xl font-bold mb-4">Ingredients</h2>
                 <ul className="space-y-2">
@@ -116,7 +129,6 @@ export function RecipeModal({ onClose }: RecipeModalProps) {
                 </ul>
               </div>
 
-              {/* Steps */}
               <div>
                 <h2 className="text-xl font-bold mb-6">Instructions</h2>
                 <ol className="space-y-6">
