@@ -80,6 +80,7 @@ export interface AppState {
   shoppingList: ShoppingListItem[];
   mealPlans: MealPlan[];
   currentMeal: CurrentMeal;
+  currentMealPlan: MealPlan | null;
   
   // UI State
   currentRecipe: Recipe | null;
@@ -135,4 +136,18 @@ export interface AppState {
   addChatMessage: (message: string, type: 'user' | 'chef', context: 'chef' | 'cooking') => void;
   clearChatHistory: (context: 'chef' | 'cooking') => void;
   generateShoppingList: () => void;
+  
+  // UI Actions
+  setShowMenu: (show: boolean) => void;
+  setShowRecipePanel: (show: boolean) => void;
+  
+  // Voice Actions
+  setVoiceState: (state: Partial<VoiceState>) => void;
+  
+  // Meal Plan Actions
+  createMealPlan: (name: string) => void;
+  deleteMealPlan: (id: string) => void;
+  setCurrentMealPlan: (plan: MealPlan | null) => void;
+  removeRecipeFromMealPlan: (planId: string, recipeId: string) => void;
+  addMealPlanToShoppingList: (planId: string) => void;
 }

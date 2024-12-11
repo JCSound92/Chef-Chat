@@ -38,7 +38,7 @@ export function RecipeModal({ onClose }: RecipeModalProps) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 overflow-y-auto"
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
         onClick={onClose}
       >
         <motion.div
@@ -46,12 +46,12 @@ export function RecipeModal({ onClose }: RecipeModalProps) {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: "100%" }}
           transition={{ type: "spring", damping: 25, stiffness: 200 }}
-          className="relative mx-auto my-4 md:my-20 bg-white rounded-t-2xl md:rounded-2xl max-w-4xl"
+          className="fixed inset-x-0 bottom-0 top-4 md:inset-20 bg-white rounded-t-2xl md:rounded-2xl overflow-hidden"
           onClick={e => e.stopPropagation()}
         >
           <div 
             ref={modalRef}
-            className="overflow-y-auto overscroll-contain"
+            className="absolute inset-0 overflow-y-auto overscroll-contain"
           >
             {/* Header */}
             <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-100">

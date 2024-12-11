@@ -68,6 +68,7 @@ export const useStore = create<AppState>()(
         transcript: ''
       },
       mealPlans: [],
+      currentMealPlan: null,
 
       // Actions
       setIsLoading: (loading) => set({ isLoading: loading }),
@@ -325,6 +326,51 @@ export const useStore = create<AppState>()(
             shoppingList: [...state.shoppingList, ...newItems]
           };
         });
+      },
+
+      // UI Actions
+      setShowMenu: (show) => set({ showMenu: show }),
+      setShowRecipePanel: (show) => set({ showRecipePanel: show }),
+
+      // Voice Actions
+      setVoiceState: (state) => set((prev) => ({
+        voiceState: { ...prev.voiceState, ...state }
+      })),
+
+      // Meal Plan Actions
+      createMealPlan: (name) => set((state) => ({
+        mealPlans: [
+          ...state.mealPlans,
+          {
+            id: `${Date.now()}-${Math.random()}`,
+            name,
+            recipes: [],
+            createdAt: Date.now()
+          }
+        ]
+      })),
+
+      deleteMealPlan: (id) => set((state) => ({
+        mealPlans: state.mealPlans.filter(plan => plan.id !== id)
+      })),
+
+      setCurrentMealPlan: (plan) => set({ currentMealPlan: plan }),
+
+      removeRecipeFromMealPlan: (planId, recipeId) => set((state) => ({
+        mealPlans: state.mealPlans.map(plan =>
+          plan.id === planId
+            ? { ...plan, recipes: plan.recipes.filter(recipe => recipe.id !== recipeId) }
+            : plan
+        )
+      })),
+
+      addMealPlanToShoppingList: (planId) => {
+        const { mealPlans, addToShoppingList } = get();
+        const plan = mealPlans.find(p => p.id === planId);
+        if (plan) {
+          const allIngredients = plan.recipes.flatMap(recipe => recipe.ingredients);
+          addToShoppingList(allIngredients, planId);
+        }
       }
     }),
     {
@@ -342,7 +388,8 @@ export const useStore = create<AppState>()(
         chatContexts: state.chatContexts,
         searchHistory: state.searchHistory,
         mealPlans: state.mealPlans,
-        cookingState: state.cookingState
+        cookingState: state.cookingState,
+        currentMealPlan: state.currentMealPlan
       })
     }
   )
